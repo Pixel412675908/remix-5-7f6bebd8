@@ -1,19 +1,19 @@
-import { Moon, Sun, FolderOpen, Settings, BarChart3 } from "lucide-react";
+import { Moon, Sun, FolderOpen, Settings } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { PIPELINE_STAGES, type PipelineStage } from "@/lib/pipeline";
 
 interface FloatingToolbarProps {
   onSettingsOpen: () => void;
   onArchiveOpen: () => void;
+  onProgressClick: () => void;
   currentStage: PipelineStage;
   completedStages: PipelineStage[];
 }
 
-const FloatingToolbar = ({ onSettingsOpen, onArchiveOpen, currentStage, completedStages }: FloatingToolbarProps) => {
+const FloatingToolbar = ({ onSettingsOpen, onArchiveOpen, onProgressClick, currentStage, completedStages }: FloatingToolbarProps) => {
   const { theme, toggleTheme } = useTheme();
 
-  const currentIndex = PIPELINE_STAGES.findIndex((s) => s.id === currentStage);
-  const progressPercent = Math.round(((completedStages.length) / PIPELINE_STAGES.length) * 100);
+  const progressPercent = Math.round((completedStages.length / PIPELINE_STAGES.length) * 100);
 
   const items = [
     {
@@ -37,17 +37,20 @@ const FloatingToolbar = ({ onSettingsOpen, onArchiveOpen, currentStage, complete
 
   return (
     <div className="flex items-center gap-1 justify-end px-4 py-2 border-t border-border bg-background">
-      {/* Progress indicator */}
-      <div className="flex items-center gap-2 mr-auto">
-        <BarChart3 strokeWidth={1.5} className="w-4 h-4 text-primary" />
+      {/* Progress indicator - clickable */}
+      <button
+        onClick={onProgressClick}
+        className="flex items-center gap-2 mr-auto hover:opacity-80 transition-opacity duration-150"
+        title="Ver pipeline"
+      >
         <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
           <div
             className="h-full bg-primary rounded-full transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-        <span className="text-[11px] text-muted-foreground">{progressPercent}%</span>
-      </div>
+        <span className="text-[11px] text-muted-foreground font-medium">{progressPercent}%</span>
+      </button>
 
       {items.map((item, i) => (
         <button

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send } from "lucide-react";
+import { Send, Copy, Check } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import type { ChatMessage } from "@/lib/pipeline";
 
 interface ChatInterfaceProps {
@@ -12,12 +13,24 @@ interface ChatInterfaceProps {
 
 const ChatInterface = ({ messages, onSendMessage, isLoading, placeholder }: ChatInterfaceProps) => {
   const [input, setInput] = useState("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Close context menu on click outside
+  useEffect(() => {
+    const handler = () => setContextMenu(null);
+    if (contextMenu) {
+      document.addEventListener("click", handler);
+      return () => document.removeEventListener("click", handler);
+    }
+  }, [contextMenu]);
 
   const handleSubmit = () => {
     if (!input.trim() || isLoading) return;
@@ -40,6 +53,27 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, placeholder }: Chat
     el.style.height = Math.min(el.scrollHeight, 140) + "px";
   };
 
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1500);
+  };
+
+  const handleTouchStart = (msg: ChatMessage, e: React.TouchEvent) => {
+    if (msg.role !== "user") return;
+    const touch = e.touches[0];
+    longPressTimer.current = setTimeout(() => {
+      setContextMenu({ id: msg.id, x: touch.clientX, y: touch.clientY });
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Messages */}
@@ -54,19 +88,60 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, placeholder }: Chat
               className={msg.role === "user" ? "flex justify-end" : "flex justify-start"}
             >
               <div
-                className={
+                className={`relative group ${
                   msg.role === "user"
                     ? "chat-bubble-user max-w-[80%] px-4 py-3"
                     : "chat-bubble-ai max-w-[85%] px-4 py-3"
-                }
+                }`}
+                onTouchStart={(e) => handleTouchStart(msg, e)}
+                onTouchEnd={handleTouchEnd}
+                onContextMenu={(e) => {
+                  if (msg.role === "user") {
+                    e.preventDefault();
+                    setContextMenu({ id: msg.id, x: e.clientX, y: e.clientY });
+                  }
+                }}
               >
-                <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
-                  {msg.content}
-                </p>
+                <div className="text-sm leading-relaxed text-foreground prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>p:last-child]:mb-0">
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                </div>
+
+                {/* Copy button for AI messages */}
+                {msg.role === "assistant" && (
+                  <button
+                    onClick={() => copyToClipboard(msg.content, msg.id)}
+                    className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors duration-150"
+                  >
+                    {copiedId === msg.id ? (
+                      <><Check strokeWidth={1.5} className="w-3.5 h-3.5" /> Copiado</>
+                    ) : (
+                      <><Copy strokeWidth={1.5} className="w-3.5 h-3.5" /> Copiar</>
+                    )}
+                  </button>
+                )}
               </div>
             </motion.div>
           ))}
         </AnimatePresence>
+
+        {/* Context menu for user messages */}
+        {contextMenu && (
+          <div
+            className="fixed z-50 surface-card rounded-xl p-1 shadow-lg border border-border min-w-[140px]"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+          >
+            <button
+              onClick={() => {
+                const msg = messages.find((m) => m.id === contextMenu.id);
+                if (msg) copyToClipboard(msg.content, msg.id);
+                setContextMenu(null);
+              }}
+              className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-muted/50 rounded-lg flex items-center gap-2 transition-colors duration-150"
+            >
+              <Copy strokeWidth={1.5} className="w-3.5 h-3.5" /> Copiar mensagem
+            </button>
+          </div>
+        )}
 
         {isLoading && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
