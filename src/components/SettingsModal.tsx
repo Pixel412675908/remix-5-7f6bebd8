@@ -1,76 +1,141 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { useTheme } from "@/hooks/useTheme";
-import { Moon, Sun, Bell, Globe, Shield } from "lucide-react";
+import { useTheme, useTranslation } from "@/hooks/useTheme";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  Moon, Sun, Globe, Type, Trash2, User, LogOut
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface SettingsModalProps {
   open: boolean;
   onClose: () => void;
+  onClearHistory?: () => void;
 }
 
-const SettingsModal = ({ open, onClose }: SettingsModalProps) => {
-  const { theme, toggleTheme } = useTheme();
+const SettingsModal = ({ open, onClose, onClearHistory }: SettingsModalProps) => {
+  const { theme, toggleTheme, fontSize, setFontSize, language, setLanguage } = useTheme();
+  const { user, signOut } = useAuth();
+  const t = useTranslation();
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  const username = user?.user_metadata?.username || "user";
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl">Configurações</DialogTitle>
-          <DialogDescription>Personalize sua experiência no CineScript</DialogDescription>
+          <DialogTitle className="font-display text-xl">{t("settings")}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 mt-4">
-          {/* Theme */}
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/30">
+        <div className="space-y-3 mt-2">
+          {/* Dark Mode */}
+          <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
             <div className="flex items-center gap-3">
-              {theme === "dark" ? (
-                <Moon className="w-5 h-5 text-primary" />
-              ) : (
-                <Sun className="w-5 h-5 text-primary" />
-              )}
+              {theme === "dark" ? <Sun strokeWidth={1.5} className="w-[18px] h-[18px] text-primary" /> : <Moon strokeWidth={1.5} className="w-[18px] h-[18px] text-primary" />}
               <div>
-                <p className="text-sm font-medium text-foreground">Modo Escuro</p>
-                <p className="text-xs text-muted-foreground">
-                  {theme === "dark" ? "Ativado" : "Desativado"}
-                </p>
+                <p className="text-sm font-medium text-foreground">{t("darkMode")}</p>
+                <p className="text-[11px] text-muted-foreground">{theme === "dark" ? t("enabled") : t("disabled")}</p>
               </div>
             </div>
             <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
           </div>
 
-          {/* Notifications */}
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/30">
-            <div className="flex items-center gap-3">
-              <Bell className="w-5 h-5 text-primary" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Notificações</p>
-                <p className="text-xs text-muted-foreground">Sons e alertas do sistema</p>
-              </div>
-            </div>
-            <Switch defaultChecked />
-          </div>
-
           {/* Language */}
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/30">
+          <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
             <div className="flex items-center gap-3">
-              <Globe className="w-5 h-5 text-primary" />
+              <Globe strokeWidth={1.5} className="w-[18px] h-[18px] text-primary" />
               <div>
-                <p className="text-sm font-medium text-foreground">Idioma</p>
-                <p className="text-xs text-muted-foreground">Português (Brasil)</p>
+                <p className="text-sm font-medium text-foreground">{t("language")}</p>
               </div>
+            </div>
+            <div className="flex gap-1">
+              {(["pt-BR", "en"] as const).map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => setLanguage(lang)}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all duration-150 ${
+                    language === lang
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {lang === "pt-BR" ? "PT-BR" : "EN"}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Auto-save */}
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/30">
+          {/* Font Size */}
+          <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
             <div className="flex items-center gap-3">
-              <Shield className="w-5 h-5 text-primary" />
+              <Type strokeWidth={1.5} className="w-[18px] h-[18px] text-primary" />
               <div>
-                <p className="text-sm font-medium text-foreground">Salvamento Automático</p>
-                <p className="text-xs text-muted-foreground">Salvar progresso automaticamente</p>
+                <p className="text-sm font-medium text-foreground">{t("fontSize")}</p>
               </div>
             </div>
-            <Switch defaultChecked />
+            <div className="flex gap-1">
+              {(["small", "medium", "large"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setFontSize(s)}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all duration-150 ${
+                    fontSize === s
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t(s)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Clear History */}
+          {onClearHistory && (
+            <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
+              <div className="flex items-center gap-3">
+                <Trash2 strokeWidth={1.5} className="w-[18px] h-[18px] text-destructive" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">{t("clearHistory")}</p>
+                </div>
+              </div>
+              {!confirmClear ? (
+                <Button variant="ghost" size="sm" onClick={() => setConfirmClear(true)} className="text-destructive text-xs">
+                  {t("clearHistory")}
+                </Button>
+              ) : (
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => setConfirmClear(false)} className="text-xs">
+                    {t("cancel")}
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => { onClearHistory(); setConfirmClear(false); }} className="text-xs">
+                    {t("confirm")}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Account */}
+          <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-3">
+            <div className="flex items-center gap-3">
+              <User strokeWidth={1.5} className="w-[18px] h-[18px] text-primary" />
+              <div>
+                <p className="text-sm font-medium text-foreground">{t("account")}</p>
+                <p className="text-[11px] text-muted-foreground">@{username}</p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={signOut}
+              className="w-full justify-start text-destructive hover:text-destructive gap-2"
+            >
+              <LogOut strokeWidth={1.5} className="w-4 h-4" />
+              {t("logout")}
+            </Button>
           </div>
         </div>
       </DialogContent>

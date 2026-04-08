@@ -1,51 +1,52 @@
 import { PIPELINE_STAGES, type PipelineStage } from "@/lib/pipeline";
 import type { ProjectData } from "@/lib/pipeline";
-import { Menu, Settings } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Menu, ArrowLeft } from "lucide-react";
 
 interface WorkspaceHeaderProps {
   project: ProjectData;
   currentStage: PipelineStage;
   onMenuToggle?: () => void;
-  onSettingsOpen?: () => void;
+  onBack?: () => void;
 }
 
-const WorkspaceHeader = ({ project, currentStage, onMenuToggle, onSettingsOpen }: WorkspaceHeaderProps) => {
+const WorkspaceHeader = ({ project, currentStage, onMenuToggle, onBack }: WorkspaceHeaderProps) => {
   const stageInfo = PIPELINE_STAGES.find((s) => s.id === currentStage);
 
   return (
-    <header className="h-14 border-b border-border flex items-center justify-between px-4 md:px-6 bg-card/30">
-      <div className="flex items-center gap-3">
+    <header className="h-13 border-b border-border flex items-center justify-between px-4 bg-background">
+      <div className="flex items-center gap-2">
+        {onBack && (
+          <button onClick={onBack} className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-150">
+            <ArrowLeft strokeWidth={1.5} className="w-[18px] h-[18px]" />
+          </button>
+        )}
         {onMenuToggle && (
-          <Button variant="ghost" size="icon" onClick={onMenuToggle} className="md:hidden h-9 w-9">
-            <Menu className="w-5 h-5" />
-          </Button>
+          <button onClick={onMenuToggle} className="md:hidden w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-150">
+            <Menu strokeWidth={1.5} className="w-[18px] h-[18px]" />
+          </button>
         )}
-        <h1 className="font-display text-sm md:text-base text-foreground truncate max-w-[180px] md:max-w-[300px]">
-          {project.theme}
-        </h1>
-        {project.genre && (
-          <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-md border border-primary/30 text-primary/80">
-            {project.genre}
-          </span>
-        )}
+        <div className="min-w-0">
+          <h1 className="text-sm font-medium text-foreground truncate max-w-[180px] md:max-w-[300px]">
+            {project.theme?.substring(0, 40)}
+          </h1>
+          <div className="flex items-center gap-2 mt-0.5">
+            {project.genre && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full border border-primary/20 text-primary/80">
+                {project.genre}
+              </span>
+            )}
+            {stageInfo && (
+              <span className="text-[10px] text-muted-foreground">
+                {stageInfo.label}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        {stageInfo && (
-          <span className="hidden sm:inline">
-            Etapa: <span className="text-primary">{stageInfo.label}</span>
-          </span>
-        )}
-        <span className="hidden sm:inline">
-          {project.minDuration}–{project.maxDuration} min
-        </span>
-        {onSettingsOpen && (
-          <Button variant="ghost" size="icon" onClick={onSettingsOpen} className="h-9 w-9">
-            <Settings className="w-4 h-4" />
-          </Button>
-        )}
-      </div>
+      <span className="text-[11px] text-muted-foreground hidden sm:inline">
+        {project.minDuration}–{project.maxDuration} min
+      </span>
     </header>
   );
 };
