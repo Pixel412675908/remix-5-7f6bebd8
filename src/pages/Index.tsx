@@ -54,7 +54,7 @@ const Index = () => {
             <p className="text-xs uppercase tracking-[0.3em] text-primary/80 mb-4 font-medium">
               Roteiro Profissional
             </p>
-            <h1 className="font-display text-5xl md:text-7xl font-bold leading-[1.1] tracking-tight">
+            <h1 className="font-display text-3xl sm:text-5xl md:text-7xl font-bold leading-[1.1] tracking-tight">
               <span className="text-foreground">Cine</span>
               <span className="text-gradient-green">Script</span>
             </h1>
