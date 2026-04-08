@@ -47,7 +47,7 @@ const PROVIDER_CONFIGS: Record<string, { url: string; envKey: string; model: str
   },
   lovable: {
     url: "https://ai.gateway.lovable.dev/v1/chat/completions",
-    envKey: "LOVABLE_API_KEY",
+    envKey: "LOVABLE_API_KEY", 
     model: "google/gemini-3-flash-preview",
   },
 };
