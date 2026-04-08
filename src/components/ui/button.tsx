@@ -15,7 +15,7 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        cinema: "bg-gradient-to-r from-gold-dark via-primary to-gold-dark text-primary-foreground font-semibold border border-primary/30 hover:border-primary/60 hover:shadow-[0_0_20px_-5px_hsl(38_70%_55%_/_0.3)] active:scale-[0.98]",
+        cinema: "bg-gradient-to-r from-green-dark via-primary to-green-dark text-primary-foreground font-semibold border border-primary/30 hover:border-primary/60 hover:shadow-[0_0_20px_-5px_hsl(152_58%_38%_/_0.3)] active:scale-[0.98]",
         "cinema-outline": "border border-primary/40 text-primary hover:bg-primary/10 hover:border-primary/70",
         "cinema-ghost": "text-muted-foreground hover:text-primary hover:bg-primary/5",
       },
