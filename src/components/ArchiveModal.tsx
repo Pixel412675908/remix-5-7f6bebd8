@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Trash2, FileText, Download } from "lucide-react";
+import { Trash2, FileText, Download, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
