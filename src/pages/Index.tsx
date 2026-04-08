@@ -107,7 +107,7 @@ const Index = () => {
             </h2>
           </motion.div>
 
-          <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-9 gap-3 md:gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 lg:grid-cols-9">
             {PIPELINE_STAGES.map((stage, i) => (
               <motion.div
                 key={stage.id}
