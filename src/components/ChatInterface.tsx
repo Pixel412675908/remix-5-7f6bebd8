@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import type { ChatMessage } from "@/lib/pipeline";
 
@@ -38,27 +37,27 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, placeholder }: Chat
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 160) + "px";
+    el.style.height = Math.min(el.scrollHeight, 140) + "px";
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
         <AnimatePresence initial={false}>
           {messages.map((msg) => (
             <motion.div
               key={msg.id}
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.2 }}
               className={msg.role === "user" ? "flex justify-end" : "flex justify-start"}
             >
               <div
                 className={
                   msg.role === "user"
-                    ? "chat-bubble-user max-w-[75%] px-4 py-3"
-                    : "chat-bubble-ai max-w-[80%] px-4 py-3"
+                    ? "chat-bubble-user max-w-[80%] px-4 py-3"
+                    : "chat-bubble-ai max-w-[85%] px-4 py-3"
                 }
               >
                 <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
@@ -70,11 +69,7 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, placeholder }: Chat
         </AnimatePresence>
 
         {isLoading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex justify-start"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
             <div className="chat-bubble-ai px-4 py-3">
               <div className="flex gap-1.5">
                 {[0, 1, 2].map((i) => (
@@ -89,13 +84,12 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, placeholder }: Chat
             </div>
           </motion.div>
         )}
-
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <div className="border-t border-border p-4">
-        <div className="surface-elevated rounded-xl flex items-end gap-2 p-2">
+      <div className="px-4 pb-2">
+        <div className="surface-card rounded-xl flex items-end gap-2 p-2">
           <textarea
             ref={textareaRef}
             value={input}
@@ -104,17 +98,15 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, placeholder }: Chat
             onKeyDown={handleKeyDown}
             placeholder={placeholder || "Digite sua mensagem..."}
             rows={1}
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none outline-none px-2 py-2 max-h-40"
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none outline-none px-2 py-2 max-h-36"
           />
-          <Button
-            variant="cinema"
-            size="icon"
+          <button
             onClick={handleSubmit}
             disabled={!input.trim() || isLoading}
-            className="shrink-0 h-9 w-9 rounded-lg"
+            className="shrink-0 w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 hover:opacity-90 active:scale-95 transition-all duration-150"
           >
-            <Send className="w-4 h-4" />
-          </Button>
+            <Send strokeWidth={1.5} className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>

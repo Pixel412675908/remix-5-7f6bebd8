@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import PipelineSidebar, { PipelineSidebarContent } from "@/components/PipelineSidebar";
 import ChatInterface from "@/components/ChatInterface";
 import WorkspaceHeader from "@/components/WorkspaceHeader";
@@ -12,9 +12,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { ProjectData, ChatMessage, PipelineStage } from "@/lib/pipeline";
+import { AI_PIPELINE } from "@/lib/ai-pipeline";
 
 interface WorkspaceProps {
   project: ProjectData;
+  onBack?: () => void;
 }
 
 const STAGE_SYSTEM_PROMPTS: Record<string, string> = {
@@ -30,8 +32,22 @@ const STAGE_SYSTEM_PROMPTS: Record<string, string> = {
   final: `Você é um roteirista sênior. Faça a validação final do roteiro garantindo qualidade profissional. Português brasileiro. Sem emojis.`,
 };
 
-const Workspace = ({ project }: WorkspaceProps) => {
-  const { user, signOut } = useAuth();
+// Map pipeline stages to their AI providers
+const STAGE_PROVIDERS: Record<string, { provider: string; fallback: string }> = {
+  deepening: { provider: "gemini", fallback: "grok" },
+  logline: { provider: "gemini", fallback: "grok" },
+  structure: { provider: "chatgpt", fallback: "grok" },
+  characters: { provider: "gemini", fallback: "grok" },
+  scenes: { provider: "gemini", fallback: "grok" },
+  writing: { provider: "claude", fallback: "grok" },
+  revision: { provider: "deepseek", fallback: "grok" },
+  dialogues: { provider: "openrouter", fallback: "grok" },
+  rhythm: { provider: "chatgpt", fallback: "grok" },
+  final: { provider: "chatgpt", fallback: "grok" },
+};
+
+const Workspace = ({ project, onBack }: WorkspaceProps) => {
+  const { user } = useAuth();
   const [currentStage, setCurrentStage] = useState<PipelineStage>("deepening");
   const [completedStages, setCompletedStages] = useState<PipelineStage[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -49,6 +65,7 @@ const Workspace = ({ project }: WorkspaceProps) => {
     contextSummary: string
   ): Promise<string> => {
     const systemPrompt = STAGE_SYSTEM_PROMPTS[stage] || STAGE_SYSTEM_PROMPTS.deepening;
+    const providerConfig = STAGE_PROVIDERS[stage] || STAGE_PROVIDERS.deepening;
     const contextMsg = contextSummary
       ? `\n\nContexto do projeto:\nTema: ${project.theme}\nGênero: ${project.genre || "Não definido"}\nDuração: ${project.minDuration}-${project.maxDuration} min\nRespostas do aprofundamento: ${contextSummary}`
       : "";
@@ -63,10 +80,10 @@ const Workspace = ({ project }: WorkspaceProps) => {
     const { data, error } = await supabase.functions.invoke("ai-orchestrator", {
       body: {
         step: stage,
-        provider: "lovable",
+        provider: providerConfig.provider,
         messages: messagesPayload,
         context: { theme: project.theme, genre: project.genre },
-        fallbackProvider: "grok",
+        fallbackProvider: providerConfig.fallback,
       },
     });
 
@@ -93,22 +110,20 @@ const Workspace = ({ project }: WorkspaceProps) => {
           summary
         );
 
-        const aiMsg: ChatMessage = {
+        setMessages([{
           id: "welcome",
           role: "assistant",
           content: response,
           timestamp: new Date(),
-        };
-        setMessages([aiMsg]);
+        }]);
       } catch (err: any) {
         toast.error("Erro ao conectar com a IA: " + (err.message || "Tente novamente"));
-        const fallbackMsg: ChatMessage = {
+        setMessages([{
           id: "welcome",
           role: "assistant",
           content: `Recebi suas respostas sobre "${project.theme}". Vamos aprofundar: o que motivou você a contar essa história?`,
           timestamp: new Date(),
-        };
-        setMessages([fallbackMsg]);
+        }]);
       }
       setIsLoading(false);
     },
@@ -134,13 +149,12 @@ const Workspace = ({ project }: WorkspaceProps) => {
 
       try {
         const response = await callAI(content, currentStage, contextSummary);
-        const aiMsg: ChatMessage = {
+        setMessages((prev) => [...prev, {
           id: (Date.now() + 1).toString(),
           role: "assistant",
           content: response,
           timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, aiMsg]);
+        }]);
       } catch (err: any) {
         toast.error("Erro da IA: " + (err.message || "Tente novamente"));
       }
@@ -149,13 +163,20 @@ const Workspace = ({ project }: WorkspaceProps) => {
     [currentStage, contextSummary]
   );
 
+  const handleClearHistory = () => {
+    setMessages([]);
+    conversationRef.current = [];
+  };
+
   const displayStage: PipelineStage =
     currentStage === "deepening" || currentStage === "input" ? "logline" : currentStage;
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-[100dvh] bg-background">
+      {/* Desktop sidebar */}
       <PipelineSidebar currentStage={displayStage} completedStages={completedStages} />
 
+      {/* Mobile sidebar sheet */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-72 p-0">
           <SheetTitle className="sr-only">Pipeline</SheetTitle>
@@ -163,26 +184,29 @@ const Workspace = ({ project }: WorkspaceProps) => {
         </SheetContent>
       </Sheet>
 
+      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         <WorkspaceHeader
           project={project}
           currentStage={displayStage}
           onMenuToggle={() => setMobileMenuOpen(true)}
-          onSettingsOpen={() => setSettingsOpen(true)}
+          onBack={onBack}
         />
+
         <ChatInterface
           messages={messages}
           onSendMessage={handleSendMessage}
           isLoading={isLoading}
           placeholder="Responda para aprofundar sua história..."
         />
-      </div>
 
-      <FloatingToolbar
-        onSettingsOpen={() => setSettingsOpen(true)}
-        onArchiveOpen={() => setArchiveOpen(true)}
-        onSignOut={signOut}
-      />
+        <FloatingToolbar
+          onSettingsOpen={() => setSettingsOpen(true)}
+          onArchiveOpen={() => setArchiveOpen(true)}
+          currentStage={displayStage}
+          completedStages={completedStages}
+        />
+      </div>
 
       <QuestionModal
         open={showQuestions}
@@ -192,7 +216,11 @@ const Workspace = ({ project }: WorkspaceProps) => {
         subtitle="Suas respostas guiarão as IAs na criação do roteiro"
       />
 
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onClearHistory={handleClearHistory}
+      />
       <ArchiveModal open={archiveOpen} onClose={() => setArchiveOpen(false)} />
     </div>
   );

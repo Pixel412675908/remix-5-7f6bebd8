@@ -60,14 +60,11 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
       setAnswers((prev) => ({ ...prev, [question.id]: textInput.trim() }));
       setTextInput("");
     }
-
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((i) => i + 1);
     } else {
       const finalAnswers = { ...answers };
-      if (question.type === "text") {
-        finalAnswers[question.id] = textInput.trim();
-      }
+      if (question.type === "text") finalAnswers[question.id] = textInput.trim();
       onSubmit(finalAnswers);
     }
   };
@@ -84,11 +81,12 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
           className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, scale: 0.96, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            exit={{ opacity: 0, scale: 0.96, y: 20 }}
             transition={{ duration: 0.3 }}
-            className="surface-elevated rounded-2xl w-full max-w-lg overflow-hidden"
+            className="surface-card rounded-2xl w-full max-w-lg overflow-hidden"
+            style={{ borderRadius: "16px" }}
           >
             {/* Progress */}
             <div className="h-1 bg-muted">
@@ -100,15 +98,13 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
               />
             </div>
 
-            {/* Header */}
             <div className="p-6 pb-3">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">
                 {title || "Aprofundamento"} — {currentIndex + 1}/{questions.length}
               </p>
-              {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+              {subtitle && <p className="text-[11px] text-muted-foreground mt-1">{subtitle}</p>}
             </div>
 
-            {/* Question */}
             <div className="px-6 pb-6">
               <AnimatePresence mode="wait">
                 <motion.div
@@ -128,7 +124,7 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
                       onChange={(e) => setTextInput(e.target.value)}
                       placeholder="Escreva sua resposta..."
                       rows={3}
-                      className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+                      className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none focus:border-primary/50 transition-all duration-150"
                     />
                   )}
 
@@ -138,15 +134,15 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
                         <button
                           key={opt.id}
                           onClick={() => handleSelectSingle(opt.id)}
-                          className={`w-full text-left px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 ${
+                          className={`w-full text-left px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-150 ${
                             selectedSingle === opt.id
                               ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-muted/30 text-foreground hover:border-primary/30"
+                              : "border-border bg-muted/20 text-foreground hover:border-primary/30"
                           }`}
                         >
                           <div className="flex items-center justify-between">
                             <span>{opt.label}</span>
-                            {selectedSingle === opt.id && <Check className="w-4 h-4 text-primary" />}
+                            {selectedSingle === opt.id && <Check strokeWidth={1.5} className="w-4 h-4 text-primary" />}
                           </div>
                         </button>
                       ))}
@@ -161,43 +157,35 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
                           <button
                             key={opt.id}
                             onClick={() => handleToggleMultiple(opt.id)}
-                            className={`w-full text-left px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 ${
+                            className={`w-full text-left px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-150 ${
                               isSelected
                                 ? "border-primary bg-primary/10 text-primary"
-                                : "border-border bg-muted/30 text-foreground hover:border-primary/30"
+                                : "border-border bg-muted/20 text-foreground hover:border-primary/30"
                             }`}
                           >
                             <div className="flex items-center justify-between">
                               <span>{opt.label}</span>
-                              {isSelected && <Check className="w-4 h-4 text-primary" />}
+                              {isSelected && <Check strokeWidth={1.5} className="w-4 h-4 text-primary" />}
                             </div>
                           </button>
                         );
                       })}
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Selecione quantas opções desejar
-                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">Selecione quantas opções desejar</p>
                     </div>
                   )}
                 </motion.div>
               </AnimatePresence>
             </div>
 
-            {/* Footer */}
             <div className="p-6 pt-0 flex justify-between items-center">
               <button
                 onClick={() => currentIndex > 0 && setCurrentIndex((i) => i - 1)}
                 disabled={currentIndex === 0}
-                className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
+                className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors duration-150"
               >
                 Voltar
               </button>
-              <Button
-                variant="cinema"
-                onClick={handleNext}
-                disabled={!canProceed()}
-                className="px-8"
-              >
+              <Button variant="brand" onClick={handleNext} disabled={!canProceed()} className="px-8">
                 {currentIndex < questions.length - 1 ? "Próxima" : "Enviar Respostas"}
               </Button>
             </div>
