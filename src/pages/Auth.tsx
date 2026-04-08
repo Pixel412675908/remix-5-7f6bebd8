@@ -148,8 +148,8 @@ const Auth = () => {
                   <li className={password.length >= 8 ? "text-green-500" : ""}>Mínimo 8 caracteres</li>
                   <li className={/[a-z]/.test(password) ? "text-green-500" : ""}>Letra minúscula</li>
                   <li className={/[A-Z]/.test(password) ? "text-green-500" : ""}>Letra maiúscula</li>
-                  <li className={/[0-9]/.test(password) ? "text-green-500" : ""}>Um número</li>
-                  <li className={/[^a-zA-Z0-9]/.test(password) ? "text-green-500" : ""}>Caractere especial ($@&#)</li>
+                  <li className={/[0-9]/.test(password) ? "text-green-500" : ""}>Números</li>
+                  <li className={/[^a-zA-Z0-9]/.test(password) ? "text-green-500" : ""}>Dígito especial ($@&#)</li>
                 </ul>
               </div>
             )}

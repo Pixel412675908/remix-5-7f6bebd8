@@ -1,0 +1,161 @@
+import { useState, useEffect } from "react";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Plus, MoreHorizontal, PenLine, Pin, Trash2, LogOut, FileText } from "lucide-react";
+import { toast } from "sonner";
+import { format } from "date-fns";
+
+interface ScriptLibrarySidebarProps {
+  open: boolean;
+  onClose: () => void;
+  onNewScript: () => void;
+  onLoadScript?: (script: any) => void;
+}
+
+const ScriptLibrarySidebar = ({ open, onClose, onNewScript, onLoadScript }: ScriptLibrarySidebarProps) => {
+  const { user, signOut } = useAuth();
+  const [scripts, setScripts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  useEffect(() => {
+    if (open && user) fetchScripts();
+  }, [open, user]);
+
+  const fetchScripts = async () => {
+    if (!user) return;
+    setLoading(true);
+    const { data } = await supabase
+      .from("scripts")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    setScripts(data || []);
+    setLoading(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    await supabase.from("scripts").delete().eq("id", id);
+    setScripts((prev) => prev.filter((s) => s.id !== id));
+    toast.success("Roteiro removido");
+    setMenuOpen(null);
+  };
+
+  const handleRename = async (id: string) => {
+    if (!renameValue.trim()) return;
+    await supabase.from("scripts").update({ title: renameValue.trim() }).eq("id", id);
+    setScripts((prev) => prev.map((s) => s.id === id ? { ...s, title: renameValue.trim() } : s));
+    setRenaming(null);
+    setMenuOpen(null);
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent side="left" className="w-80 p-0 flex flex-col">
+        <SheetTitle className="sr-only">Roteiros</SheetTitle>
+
+        {/* Header */}
+        <div className="p-4 border-b border-border flex items-center justify-between">
+          <h2 className="font-display text-lg text-foreground">Meus Roteiros</h2>
+          <button
+            onClick={() => { onNewScript(); onClose(); }}
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-primary hover:bg-primary/10 transition-all duration-150"
+          >
+            <Plus strokeWidth={1.5} className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Script list */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+          {loading ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Carregando...</p>
+          ) : scripts.length === 0 ? (
+            <div className="text-center py-12">
+              <FileText strokeWidth={1.5} className="w-10 h-10 mx-auto text-muted-foreground/30 mb-2" />
+              <p className="text-sm text-muted-foreground">Nenhum roteiro ainda</p>
+            </div>
+          ) : (
+            scripts.map((s) => (
+              <div key={s.id} className="relative group">
+                <button
+                  onClick={() => { onLoadScript?.(s); onClose(); }}
+                  className="w-full text-left p-3 rounded-xl hover:bg-muted/50 transition-all duration-150"
+                >
+                  {renaming === s.id ? (
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleRename(s.id)}
+                        className="text-sm bg-muted/50 border border-border rounded-lg px-2 py-1 outline-none focus:border-primary/50 flex-1"
+                        autoFocus
+                      />
+                      <button onClick={() => handleRename(s.id)} className="text-xs text-primary font-medium">OK</button>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm font-medium text-foreground truncate">{s.title}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] text-muted-foreground">
+                          {format(new Date(s.created_at), "dd/MM/yy")}
+                        </span>
+                        {s.genre && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-primary/20 text-primary/80">
+                            {s.genre}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{s.theme}</p>
+                    </>
+                  )}
+                </button>
+
+                {/* 3-dot menu */}
+                <div className="absolute right-2 top-3">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === s.id ? null : s.id); }}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all duration-150"
+                  >
+                    <MoreHorizontal strokeWidth={1.5} className="w-4 h-4" />
+                  </button>
+                  {menuOpen === s.id && (
+                    <div className="absolute right-0 top-8 z-10 surface-card rounded-xl p-1 min-w-[120px] shadow-lg border border-border">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setRenaming(s.id); setRenameValue(s.title); setMenuOpen(null); }}
+                        className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-muted/50 rounded-lg flex items-center gap-2 transition-colors duration-150"
+                      >
+                        <PenLine strokeWidth={1.5} className="w-3 h-3" /> Renomear
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}
+                        className="w-full text-left px-3 py-2 text-xs text-destructive hover:bg-destructive/10 rounded-lg flex items-center gap-2 transition-colors duration-150"
+                      >
+                        <Trash2 strokeWidth={1.5} className="w-3 h-3" /> Excluir
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Logout */}
+        <div className="p-3 border-t border-border">
+          <button
+            onClick={signOut}
+            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-destructive hover:bg-destructive/10 transition-all duration-150"
+          >
+            <LogOut strokeWidth={1.5} className="w-4 h-4" />
+            Sair da conta
+          </button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
+export default ScriptLibrarySidebar;

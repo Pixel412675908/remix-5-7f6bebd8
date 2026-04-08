@@ -1,26 +1,29 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import PipelineSidebar, { PipelineSidebarContent } from "@/components/PipelineSidebar";
+import PipelineSidebar from "@/components/PipelineSidebar";
 import ChatInterface from "@/components/ChatInterface";
 import WorkspaceHeader from "@/components/WorkspaceHeader";
 import QuestionModal from "@/components/QuestionModal";
 import SettingsModal from "@/components/SettingsModal";
 import FloatingToolbar from "@/components/FloatingToolbar";
 import ArchiveModal from "@/components/ArchiveModal";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import PipelineModal from "@/components/PipelineModal";
+import ScriptLibrarySidebar from "@/components/ScriptLibrarySidebar";
 import { DEEPENING_QUESTIONS } from "@/lib/questions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { ProjectData, ChatMessage, PipelineStage } from "@/lib/pipeline";
-import { AI_PIPELINE } from "@/lib/ai-pipeline";
+import { PIPELINE_STAGES } from "@/lib/pipeline";
 
 interface WorkspaceProps {
   project: ProjectData;
   onBack?: () => void;
+  onNewScript?: () => void;
+  onLoadScript?: (script: any) => void;
 }
 
 const STAGE_SYSTEM_PROMPTS: Record<string, string> = {
-  deepening: `Você é um roteirista profissional de cinema. Seu papel é aprofundar a visão narrativa do usuário fazendo perguntas estratégicas sobre a história que ele quer contar. Faça UMA pergunta por vez, sempre diferente da anterior, explorando diferentes aspectos: protagonista, conflito, mundo, tom, referências, motivações do personagem, arco de transformação, etc. NUNCA repita a mesma pergunta. Se o usuário fugir do tema do roteiro, diga educadamente que você só pode ajudar com a criação do roteiro. Responda sempre em português brasileiro. Não use emojis. Seja conciso e profissional.`,
+  deepening: `Você é um roteirista profissional de cinema. Seu papel é aprofundar a visão narrativa do usuário fazendo perguntas estratégicas sobre a história que ele quer contar. Faça UMA pergunta por vez, sempre DIFERENTE da anterior. Explore aspectos variados: protagonista, antagonista, conflito central, mundo da história, tom, referências cinematográficas, motivações, arco de transformação, tema subjacente, público-alvo, clímax desejado. NUNCA repita uma pergunta já feita. Mantenha um registro interno das perguntas feitas. Se o usuário não souber responder sobre um tema, ofereça 3-5 opções para ele escolher. Se o usuário fugir do tema do roteiro, redirecione educadamente. Responda sempre em português brasileiro. Não use emojis. Seja conciso e profissional.`,
   logline: `Você é um roteirista especializado em construir loglines cinematográficas. Com base no contexto fornecido, crie uma logline profissional e proponha a estrutura em 3 atos. Responda em português brasileiro. Sem emojis.`,
   structure: `Você é um roteirista estrutural. Desenvolva a arquitetura narrativa em 3 atos com pontos de virada, midpoint e clímax. Português brasileiro. Sem emojis.`,
   characters: `Você é especialista em construção de personagens. Desenvolva fichas completas com objetivo externo, desejo interno, ferida emocional e arco de transformação. Português brasileiro. Sem emojis.`,
@@ -32,7 +35,6 @@ const STAGE_SYSTEM_PROMPTS: Record<string, string> = {
   final: `Você é um roteirista sênior. Faça a validação final do roteiro garantindo qualidade profissional. Português brasileiro. Sem emojis.`,
 };
 
-// Map pipeline stages to their AI providers
 const STAGE_PROVIDERS: Record<string, { provider: string; fallback: string }> = {
   deepening: { provider: "gemini", fallback: "grok" },
   logline: { provider: "gemini", fallback: "grok" },
@@ -46,18 +48,57 @@ const STAGE_PROVIDERS: Record<string, { provider: string; fallback: string }> = 
   final: { provider: "chatgpt", fallback: "grok" },
 };
 
-const Workspace = ({ project, onBack }: WorkspaceProps) => {
+const SESSION_KEY = "cinescript-session";
+
+const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProps) => {
   const { user } = useAuth();
   const [currentStage, setCurrentStage] = useState<PipelineStage>("deepening");
   const [completedStages, setCompletedStages] = useState<PipelineStage[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scriptLibraryOpen, setScriptLibraryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [pipelineModalOpen, setPipelineModalOpen] = useState(false);
   const [showQuestions, setShowQuestions] = useState(true);
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string | string[]> | null>(null);
   const conversationRef = useRef<Array<{ role: string; content: string }>>([]);
+  const questionsAskedRef = useRef<string[]>([]);
+
+  // Restore session on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SESSION_KEY);
+      if (saved) {
+        const session = JSON.parse(saved);
+        if (session.projectTheme === project.theme) {
+          setMessages(session.messages?.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) || []);
+          setCurrentStage(session.currentStage || "deepening");
+          setCompletedStages(session.completedStages || []);
+          setQuestionAnswers(session.questionAnswers || null);
+          conversationRef.current = session.conversationHistory || [];
+          questionsAskedRef.current = session.questionsAsked || [];
+          if (session.questionAnswers) setShowQuestions(false);
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Save session on every change
+  useEffect(() => {
+    try {
+      const session = {
+        projectTheme: project.theme,
+        messages: messages.map((m) => ({ ...m, timestamp: m.timestamp.toISOString() })),
+        currentStage,
+        completedStages,
+        questionAnswers,
+        conversationHistory: conversationRef.current,
+        questionsAsked: questionsAskedRef.current,
+      };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    } catch {}
+  }, [messages, currentStage, completedStages, questionAnswers]);
 
   const callAI = async (
     userContent: string,
@@ -66,9 +107,14 @@ const Workspace = ({ project, onBack }: WorkspaceProps) => {
   ): Promise<string> => {
     const systemPrompt = STAGE_SYSTEM_PROMPTS[stage] || STAGE_SYSTEM_PROMPTS.deepening;
     const providerConfig = STAGE_PROVIDERS[stage] || STAGE_PROVIDERS.deepening;
-    const contextMsg = contextSummary
-      ? `\n\nContexto do projeto:\nTema: ${project.theme}\nGênero: ${project.genre || "Não definido"}\nDuração: ${project.minDuration}-${project.maxDuration} min\nRespostas do aprofundamento: ${contextSummary}`
+    
+    const previousQuestionsContext = questionsAskedRef.current.length > 0
+      ? `\n\nPerguntas já feitas anteriormente (NÃO repita nenhuma delas):\n${questionsAskedRef.current.map((q, i) => `${i + 1}. ${q}`).join("\n")}`
       : "";
+    
+    const contextMsg = contextSummary
+      ? `\n\nContexto do projeto:\nTema: ${project.theme}\nGênero: ${project.genre || "Não definido"}\nDuração: ${project.minDuration}-${project.maxDuration} min\nRespostas do aprofundamento: ${contextSummary}${previousQuestionsContext}`
+      : previousQuestionsContext;
 
     conversationRef.current.push({ role: "user", content: userContent });
 
@@ -90,6 +136,13 @@ const Workspace = ({ project, onBack }: WorkspaceProps) => {
     if (error) throw new Error(error.message || "Erro ao conectar com a IA");
     const result = data?.result || "Desculpe, não consegui gerar uma resposta. Tente novamente.";
     conversationRef.current.push({ role: "assistant", content: result });
+    
+    // Track questions asked by AI
+    const questionMatch = result.match(/\?[^?]*$/);
+    if (questionMatch) {
+      questionsAskedRef.current.push(result.substring(0, 100));
+    }
+    
     return result;
   };
 
@@ -105,7 +158,7 @@ const Workspace = ({ project, onBack }: WorkspaceProps) => {
       setIsLoading(true);
       try {
         const response = await callAI(
-          `O usuário respondeu as perguntas de aprofundamento narrativo. Aqui estão as respostas:\n${summary}\n\nCom base nessas respostas, faça UMA pergunta estratégica para aprofundar ainda mais a visão do usuário sobre a história. Algo que ainda não foi coberto pelas perguntas iniciais.`,
+          `O usuário respondeu as perguntas de aprofundamento narrativo. Aqui estão as respostas:\n${summary}\n\nCom base nessas respostas, faça UMA pergunta estratégica para aprofundar ainda mais a visão do usuário sobre a história. Algo que ainda não foi coberto pelas perguntas iniciais. Explore um aspecto completamente diferente.`,
           "deepening",
           summary
         );
@@ -166,6 +219,8 @@ const Workspace = ({ project, onBack }: WorkspaceProps) => {
   const handleClearHistory = () => {
     setMessages([]);
     conversationRef.current = [];
+    questionsAskedRef.current = [];
+    localStorage.removeItem(SESSION_KEY);
   };
 
   const displayStage: PipelineStage =
@@ -176,21 +231,20 @@ const Workspace = ({ project, onBack }: WorkspaceProps) => {
       {/* Desktop sidebar */}
       <PipelineSidebar currentStage={displayStage} completedStages={completedStages} />
 
-      {/* Mobile sidebar sheet */}
-      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <SheetContent side="left" className="w-72 p-0">
-          <SheetTitle className="sr-only">Pipeline</SheetTitle>
-          <PipelineSidebarContent currentStage={displayStage} completedStages={completedStages} />
-        </SheetContent>
-      </Sheet>
+      {/* Script Library Sidebar (hamburger menu) */}
+      <ScriptLibrarySidebar
+        open={scriptLibraryOpen}
+        onClose={() => setScriptLibraryOpen(false)}
+        onNewScript={() => { onNewScript?.(); }}
+        onLoadScript={onLoadScript}
+      />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         <WorkspaceHeader
           project={project}
           currentStage={displayStage}
-          onMenuToggle={() => setMobileMenuOpen(true)}
-          onBack={onBack}
+          onMenuToggle={() => setScriptLibraryOpen(true)}
         />
 
         <ChatInterface
@@ -203,6 +257,7 @@ const Workspace = ({ project, onBack }: WorkspaceProps) => {
         <FloatingToolbar
           onSettingsOpen={() => setSettingsOpen(true)}
           onArchiveOpen={() => setArchiveOpen(true)}
+          onProgressClick={() => setPipelineModalOpen(true)}
           currentStage={displayStage}
           completedStages={completedStages}
         />
@@ -214,6 +269,13 @@ const Workspace = ({ project, onBack }: WorkspaceProps) => {
         onSubmit={handleQuestionsSubmit}
         title="Aprofundamento Narrativo"
         subtitle="Suas respostas guiarão as IAs na criação do roteiro"
+      />
+
+      <PipelineModal
+        open={pipelineModalOpen}
+        onClose={() => setPipelineModalOpen(false)}
+        currentStage={displayStage}
+        completedStages={completedStages}
       />
 
       <SettingsModal

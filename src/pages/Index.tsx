@@ -27,11 +27,27 @@ const STAGE_ICONS: Record<string, React.ElementType> = {
 const Index = () => {
   const [project, setProject] = useState<ProjectData | null>(null);
   const [showSetup, setShowSetup] = useState(false);
+  const [showImprove, setShowImprove] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
   if (project) {
-    return <Workspace project={project} onBack={() => setProject(null)} />;
+    return (
+      <Workspace
+        project={project}
+        onBack={() => setProject(null)}
+        onNewScript={() => { setProject(null); setShowSetup(true); }}
+        onLoadScript={(s) => {
+          setProject({
+            theme: s.theme,
+            genre: s.genre || "",
+            notes: s.notes || "",
+            minDuration: s.min_duration,
+            maxDuration: s.max_duration,
+          });
+        }}
+      />
+    );
   }
 
   return (
@@ -66,8 +82,8 @@ const Index = () => {
             <Button variant="brand" size="lg" onClick={() => setShowSetup(true)} className="px-10">
               Criar Roteiro
             </Button>
-            <Button variant="brand-outline" size="lg" className="px-10">
-              Como Funciona
+            <Button variant="brand-outline" size="lg" onClick={() => setShowImprove(true)} className="px-10">
+              Melhorar Roteiro Existente
             </Button>
           </div>
         </motion.div>
@@ -141,6 +157,17 @@ const Index = () => {
       </section>
 
       <ProjectSetupModal open={showSetup} onSubmit={(data) => { setProject(data); setShowSetup(false); }} />
+      
+      {/* Improve existing script modal */}
+      <ProjectSetupModal
+        open={showImprove}
+        onSubmit={(data) => {
+          setProject({ ...data, notes: `[MELHORAR ROTEIRO EXISTENTE]\n${data.notes}` });
+          setShowImprove(false);
+        }}
+        isImproveMode
+      />
+      
       <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
     </div>
   );
