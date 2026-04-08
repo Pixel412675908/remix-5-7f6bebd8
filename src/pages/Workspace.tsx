@@ -1,50 +1,128 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import PipelineSidebar, { PipelineSidebarContent } from "@/components/PipelineSidebar";
 import ChatInterface from "@/components/ChatInterface";
 import WorkspaceHeader from "@/components/WorkspaceHeader";
 import QuestionModal from "@/components/QuestionModal";
 import SettingsModal from "@/components/SettingsModal";
+import FloatingToolbar from "@/components/FloatingToolbar";
+import ArchiveModal from "@/components/ArchiveModal";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { DEEPENING_QUESTIONS } from "@/lib/questions";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 import type { ProjectData, ChatMessage, PipelineStage } from "@/lib/pipeline";
 
 interface WorkspaceProps {
   project: ProjectData;
 }
 
+const STAGE_SYSTEM_PROMPTS: Record<string, string> = {
+  deepening: `Você é um roteirista profissional de cinema. Seu papel é aprofundar a visão narrativa do usuário fazendo perguntas estratégicas sobre a história que ele quer contar. Faça UMA pergunta por vez, sempre diferente da anterior, explorando diferentes aspectos: protagonista, conflito, mundo, tom, referências, motivações do personagem, arco de transformação, etc. NUNCA repita a mesma pergunta. Se o usuário fugir do tema do roteiro, diga educadamente que você só pode ajudar com a criação do roteiro. Responda sempre em português brasileiro. Não use emojis. Seja conciso e profissional.`,
+  logline: `Você é um roteirista especializado em construir loglines cinematográficas. Com base no contexto fornecido, crie uma logline profissional e proponha a estrutura em 3 atos. Responda em português brasileiro. Sem emojis.`,
+  structure: `Você é um roteirista estrutural. Desenvolva a arquitetura narrativa em 3 atos com pontos de virada, midpoint e clímax. Português brasileiro. Sem emojis.`,
+  characters: `Você é especialista em construção de personagens. Desenvolva fichas completas com objetivo externo, desejo interno, ferida emocional e arco de transformação. Português brasileiro. Sem emojis.`,
+  scenes: `Você é um roteirista de cenas. Planeje a sequência de cenas com ambientação, atmosfera e função narrativa. Português brasileiro. Sem emojis.`,
+  writing: `Você é um roteirista cinematográfico profissional. Escreva cenas com formatação técnica da indústria: cabeçalhos INT./EXT., ação no presente, diálogos com subtexto. Português brasileiro. Sem emojis.`,
+  revision: `Você é um revisor estrutural de roteiros. Identifique inconsistências, furos de roteiro e sugira correções. Português brasileiro. Sem emojis.`,
+  dialogues: `Você é especialista em diálogos cinematográficos. Refine os diálogos adicionando subtexto, naturalidade e voz única para cada personagem. Português brasileiro. Sem emojis.`,
+  rhythm: `Você é especialista em ritmo narrativo. Ajuste o pacing do roteiro para a duração alvo. Português brasileiro. Sem emojis.`,
+  final: `Você é um roteirista sênior. Faça a validação final do roteiro garantindo qualidade profissional. Português brasileiro. Sem emojis.`,
+};
+
 const Workspace = ({ project }: WorkspaceProps) => {
+  const { user, signOut } = useAuth();
   const [currentStage, setCurrentStage] = useState<PipelineStage>("deepening");
   const [completedStages, setCompletedStages] = useState<PipelineStage[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [showQuestions, setShowQuestions] = useState(true);
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string | string[]> | null>(null);
+  const conversationRef = useRef<Array<{ role: string; content: string }>>([]);
+
+  const callAI = async (
+    userContent: string,
+    stage: string,
+    contextSummary: string
+  ): Promise<string> => {
+    const systemPrompt = STAGE_SYSTEM_PROMPTS[stage] || STAGE_SYSTEM_PROMPTS.deepening;
+    const contextMsg = contextSummary
+      ? `\n\nContexto do projeto:\nTema: ${project.theme}\nGênero: ${project.genre || "Não definido"}\nDuração: ${project.minDuration}-${project.maxDuration} min\nRespostas do aprofundamento: ${contextSummary}`
+      : "";
+
+    conversationRef.current.push({ role: "user", content: userContent });
+
+    const messagesPayload = [
+      { role: "system", content: systemPrompt + contextMsg },
+      ...conversationRef.current.slice(-20),
+    ];
+
+    const { data, error } = await supabase.functions.invoke("ai-orchestrator", {
+      body: {
+        step: stage,
+        provider: "lovable",
+        messages: messagesPayload,
+        context: { theme: project.theme, genre: project.genre },
+        fallbackProvider: "grok",
+      },
+    });
+
+    if (error) throw new Error(error.message || "Erro ao conectar com a IA");
+    const result = data?.result || "Desculpe, não consegui gerar uma resposta. Tente novamente.";
+    conversationRef.current.push({ role: "assistant", content: result });
+    return result;
+  };
 
   const handleQuestionsSubmit = useCallback(
-    (answers: Record<string, string | string[]>) => {
+    async (answers: Record<string, string | string[]>) => {
       setQuestionAnswers(answers);
       setShowQuestions(false);
 
-      // Build summary from answers
       const summary = Object.entries(answers)
         .map(([key, val]) => `${key}: ${Array.isArray(val) ? val.join(", ") : val}`)
         .join("\n");
 
-      const welcomeMsg: ChatMessage = {
-        id: "welcome",
-        role: "assistant",
-        content: `Excelente! Recebi suas respostas sobre "${project.theme}"${project.genre ? ` no gênero ${project.genre}` : ""}.\n\nAgora tenho uma visão muito mais clara da sua história. Com base nas suas escolhas, vou começar a construir a logline e a estrutura narrativa.\n\nVamos refinar juntos. Me conte: o que motivou você a contar essa história? Há alguma experiência pessoal ou referência cinematográfica que inspira esse projeto?`,
-        timestamp: new Date(),
-      };
-      setMessages([welcomeMsg]);
+      setIsLoading(true);
+      try {
+        const response = await callAI(
+          `O usuário respondeu as perguntas de aprofundamento narrativo. Aqui estão as respostas:\n${summary}\n\nCom base nessas respostas, faça UMA pergunta estratégica para aprofundar ainda mais a visão do usuário sobre a história. Algo que ainda não foi coberto pelas perguntas iniciais.`,
+          "deepening",
+          summary
+        );
+
+        const aiMsg: ChatMessage = {
+          id: "welcome",
+          role: "assistant",
+          content: response,
+          timestamp: new Date(),
+        };
+        setMessages([aiMsg]);
+      } catch (err: any) {
+        toast.error("Erro ao conectar com a IA: " + (err.message || "Tente novamente"));
+        const fallbackMsg: ChatMessage = {
+          id: "welcome",
+          role: "assistant",
+          content: `Recebi suas respostas sobre "${project.theme}". Vamos aprofundar: o que motivou você a contar essa história?`,
+          timestamp: new Date(),
+        };
+        setMessages([fallbackMsg]);
+      }
+      setIsLoading(false);
     },
     [project]
   );
 
+  const contextSummary = questionAnswers
+    ? Object.entries(questionAnswers)
+        .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+        .join("\n")
+    : "";
+
   const handleSendMessage = useCallback(
-    (content: string) => {
+    async (content: string) => {
       const userMsg: ChatMessage = {
         id: Date.now().toString(),
         role: "user",
@@ -54,20 +132,21 @@ const Workspace = ({ project }: WorkspaceProps) => {
       setMessages((prev) => [...prev, userMsg]);
       setIsLoading(true);
 
-      // Simulated response — will be replaced by real AI pipeline
-      setTimeout(() => {
+      try {
+        const response = await callAI(content, currentStage, contextSummary);
         const aiMsg: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content:
-            "Obrigado por compartilhar isso. Essa camada emocional é fundamental para a construção do roteiro.\n\nAgora, fale-me sobre o protagonista — não precisa ser um nome ainda, mas quem é essa pessoa? O que a move? O que ela esconde de si mesma?",
+          content: response,
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, aiMsg]);
-        setIsLoading(false);
-      }, 1500);
+      } catch (err: any) {
+        toast.error("Erro da IA: " + (err.message || "Tente novamente"));
+      }
+      setIsLoading(false);
     },
-    []
+    [currentStage, contextSummary]
   );
 
   const displayStage: PipelineStage =
@@ -77,7 +156,6 @@ const Workspace = ({ project }: WorkspaceProps) => {
     <div className="flex h-screen bg-background">
       <PipelineSidebar currentStage={displayStage} completedStages={completedStages} />
 
-      {/* Mobile sidebar sheet */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-72 p-0">
           <SheetTitle className="sr-only">Pipeline</SheetTitle>
@@ -100,7 +178,12 @@ const Workspace = ({ project }: WorkspaceProps) => {
         />
       </div>
 
-      {/* Question modal for deepening */}
+      <FloatingToolbar
+        onSettingsOpen={() => setSettingsOpen(true)}
+        onArchiveOpen={() => setArchiveOpen(true)}
+        onSignOut={signOut}
+      />
+
       <QuestionModal
         open={showQuestions}
         questions={DEEPENING_QUESTIONS}
@@ -109,8 +192,8 @@ const Workspace = ({ project }: WorkspaceProps) => {
         subtitle="Suas respostas guiarão as IAs na criação do roteiro"
       />
 
-      {/* Settings */}
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <ArchiveModal open={archiveOpen} onClose={() => setArchiveOpen(false)} />
     </div>
   );
 };
