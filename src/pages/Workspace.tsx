@@ -108,7 +108,10 @@ const Workspace = ({ project, onboardingAnswers, questionAnswers, onBack, onNewS
 
   const generateFirstQuestion = async (answers: OnboardingAnswers) => {
     setIsLoading(true);
-    const summary = `Tema: ${answers.theme}\nGênero: ${answers.genre}\nDuração: ${answers.minDuration}-${answers.maxDuration} min\nObservações: ${answers.notes || "Nenhuma"}`;
+    const qaSummary = questionAnswers
+      ? Object.entries(questionAnswers).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join("\n")
+      : "";
+    const summary = `Tema: ${answers.theme}\nGênero: ${answers.genre}\nDuração: ${answers.minDuration}-${answers.maxDuration} min\nObservações: ${answers.notes || "Nenhuma"}\n\nRespostas de aprofundamento:\n${qaSummary}`;
 
     try {
       const response = await callAI(
