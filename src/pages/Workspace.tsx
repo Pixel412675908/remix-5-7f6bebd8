@@ -51,7 +51,7 @@ const STAGE_PROVIDERS: Record<string, { provider: string; fallback: string }> = 
 
 const SESSION_KEY = "cinescript-session";
 
-const Workspace = ({ project, onboardingAnswers, onBack, onNewScript, onLoadScript }: WorkspaceProps) => {
+const Workspace = ({ project, onboardingAnswers, questionAnswers, onBack, onNewScript, onLoadScript }: WorkspaceProps) => {
   const { user } = useAuth();
   const [currentStage, setCurrentStage] = useState<PipelineStage>("deepening");
   const [completedStages, setCompletedStages] = useState<PipelineStage[]>([]);
