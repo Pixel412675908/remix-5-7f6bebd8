@@ -17,6 +17,7 @@ import type { OnboardingAnswers } from "@/components/OnboardingModal";
 interface WorkspaceProps {
   project: ProjectData;
   onboardingAnswers?: OnboardingAnswers | null;
+  questionAnswers?: Record<string, string | string[]> | null;
   onBack?: () => void;
   onNewScript?: () => void;
   onLoadScript?: (script: any) => void;
@@ -50,7 +51,7 @@ const STAGE_PROVIDERS: Record<string, { provider: string; fallback: string }> = 
 
 const SESSION_KEY = "cinescript-session";
 
-const Workspace = ({ project, onboardingAnswers, onBack, onNewScript, onLoadScript }: WorkspaceProps) => {
+const Workspace = ({ project, onboardingAnswers, questionAnswers, onBack, onNewScript, onLoadScript }: WorkspaceProps) => {
   const { user } = useAuth();
   const [currentStage, setCurrentStage] = useState<PipelineStage>("deepening");
   const [completedStages, setCompletedStages] = useState<PipelineStage[]>([]);
@@ -107,7 +108,10 @@ const Workspace = ({ project, onboardingAnswers, onBack, onNewScript, onLoadScri
 
   const generateFirstQuestion = async (answers: OnboardingAnswers) => {
     setIsLoading(true);
-    const summary = `Tema: ${answers.theme}\nGênero: ${answers.genre}\nDuração: ${answers.minDuration}-${answers.maxDuration} min\nObservações: ${answers.notes || "Nenhuma"}`;
+    const qaSummary = questionAnswers
+      ? Object.entries(questionAnswers).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join("\n")
+      : "";
+    const summary = `Tema: ${answers.theme}\nGênero: ${answers.genre}\nDuração: ${answers.minDuration}-${answers.maxDuration} min\nObservações: ${answers.notes || "Nenhuma"}\n\nRespostas de aprofundamento:\n${qaSummary}`;
 
     try {
       const response = await callAI(
@@ -241,8 +245,11 @@ const Workspace = ({ project, onboardingAnswers, onBack, onNewScript, onLoadScri
     return result;
   };
 
+  const qaSummaryCtx = questionAnswers
+    ? "\n" + Object.entries(questionAnswers).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join("\n")
+    : "";
   const contextSummary = onboardingAnswers
-    ? `Tema: ${onboardingAnswers.theme}\nGênero: ${onboardingAnswers.genre}\nDuração: ${onboardingAnswers.minDuration}-${onboardingAnswers.maxDuration} min\nObservações: ${onboardingAnswers.notes || "Nenhuma"}`
+    ? `Tema: ${onboardingAnswers.theme}\nGênero: ${onboardingAnswers.genre}\nDuração: ${onboardingAnswers.minDuration}-${onboardingAnswers.maxDuration} min\nObservações: ${onboardingAnswers.notes || "Nenhuma"}${qaSummaryCtx}`
     : project.notes || "";
 
   const handleSendMessage = useCallback(

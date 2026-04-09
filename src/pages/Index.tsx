@@ -5,6 +5,8 @@ import { Settings } from "lucide-react";
 import ProjectSetupModal from "@/components/ProjectSetupModal";
 import OnboardingModal from "@/components/OnboardingModal";
 import type { OnboardingAnswers } from "@/components/OnboardingModal";
+import QuestionModal from "@/components/QuestionModal";
+import { DEEPENING_QUESTIONS } from "@/lib/questions";
 import SettingsModal from "@/components/SettingsModal";
 import Workspace from "@/pages/Workspace";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -29,40 +31,53 @@ const STAGE_ICONS: Record<string, React.ElementType> = {
 const Index = () => {
   const [project, setProject] = useState<ProjectData | null>(null);
   const [onboardingAnswers, setOnboardingAnswers] = useState<OnboardingAnswers | null>(null);
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, string | string[]> | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showQuestions, setShowQuestions] = useState(false);
   const [showImprove, setShowImprove] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
   const handleNewScript = useCallback(() => {
-    // Clear any previous session
     localStorage.removeItem("cinescript-session");
     setProject(null);
     setOnboardingAnswers(null);
+    setQuestionAnswers(null);
     setShowOnboarding(true);
   }, []);
 
   const handleOnboardingSubmit = useCallback((answers: OnboardingAnswers) => {
     setShowOnboarding(false);
     setOnboardingAnswers(answers);
-    setProject({
-      theme: answers.theme,
-      genre: answers.genre,
-      notes: answers.notes || "",
-      minDuration: answers.minDuration,
-      maxDuration: answers.maxDuration,
-    });
+    // Show deepening questions before opening workspace
+    setShowQuestions(true);
   }, []);
+
+  const handleQuestionsSubmit = useCallback((answers: Record<string, string | string[]>) => {
+    setShowQuestions(false);
+    setQuestionAnswers(answers);
+    if (onboardingAnswers) {
+      setProject({
+        theme: onboardingAnswers.theme,
+        genre: onboardingAnswers.genre,
+        notes: onboardingAnswers.notes || "",
+        minDuration: onboardingAnswers.minDuration,
+        maxDuration: onboardingAnswers.maxDuration,
+      });
+    }
+  }, [onboardingAnswers]);
 
   if (project) {
     return (
       <Workspace
         project={project}
         onboardingAnswers={onboardingAnswers}
-        onBack={() => { setProject(null); setOnboardingAnswers(null); }}
+        questionAnswers={questionAnswers}
+        onBack={() => { setProject(null); setOnboardingAnswers(null); setQuestionAnswers(null); }}
         onNewScript={handleNewScript}
         onLoadScript={(s) => {
           localStorage.removeItem("cinescript-session");
           setOnboardingAnswers(null);
+          setQuestionAnswers(null);
           setProject({
             theme: s.theme,
             genre: s.genre || "",
@@ -77,7 +92,7 @@ const Index = () => {
 
   return (
     <div className="min-h-[100dvh] bg-background overflow-hidden">
-      {/* Top bar - theme toggle + settings */}
+      {/* Top bar */}
       <div className="fixed top-0 right-0 z-30 flex items-center gap-1 p-4">
         <ThemeToggle position="inline" />
         <button onClick={() => setShowSettings(true)} className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200">
@@ -180,6 +195,14 @@ const Index = () => {
       </section>
 
       <OnboardingModal open={showOnboarding} onSubmit={handleOnboardingSubmit} onBack={() => setShowOnboarding(false)} />
+
+      <QuestionModal
+        open={showQuestions}
+        questions={DEEPENING_QUESTIONS}
+        onSubmit={handleQuestionsSubmit}
+        title="Aprofundamento"
+        subtitle="Quanto mais detalhes, melhor o roteiro"
+      />
 
       <ProjectSetupModal
         open={showImprove}
