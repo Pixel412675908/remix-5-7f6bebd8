@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import type { ProjectData } from "@/lib/pipeline";
 
 interface ProjectSetupModalProps {
   open: boolean;
   onSubmit: (data: ProjectData) => void;
   isImproveMode?: boolean;
+  onBack?: () => void;
 }
 
 const GENRES = [
@@ -15,7 +17,7 @@ const GENRES = [
   "Thriller", "Noir", "Experimental",
 ];
 
-const ProjectSetupModal = ({ open, onSubmit, isImproveMode }: ProjectSetupModalProps) => {
+const ProjectSetupModal = ({ open, onSubmit, isImproveMode, onBack }: ProjectSetupModalProps) => {
   const [theme, setTheme] = useState("");
   const [genre, setGenre] = useState("");
   const [notes, setNotes] = useState("");
@@ -48,7 +50,16 @@ const ProjectSetupModal = ({ open, onSubmit, isImproveMode }: ProjectSetupModalP
             className="surface-card rounded-t-2xl sm:rounded-2xl w-full max-w-lg sm:mx-4 max-h-[90vh] overflow-y-auto"
             style={{ borderRadius: "16px" }}
           >
-            <div className="p-6 pb-4 border-b border-border">
+            <div className="p-6 pb-4 border-b border-border flex items-start gap-3">
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200 shrink-0 mt-0.5"
+                >
+                  <ArrowLeft strokeWidth={1.5} className="w-[18px] h-[18px]" />
+                </button>
+              )}
+              <div>
               <h2 className="font-display text-2xl text-foreground">
                 {isImproveMode ? "Melhorar Roteiro" : "Novo Projeto"}
               </h2>
@@ -57,6 +68,7 @@ const ProjectSetupModal = ({ open, onSubmit, isImproveMode }: ProjectSetupModalP
                   ? "Cole ou descreva seu roteiro existente para a IA analisar e melhorar"
                   : "Conte-nos sobre o seu filme"}
               </p>
+              </div>
             </div>
 
             <div className="p-6 space-y-5">

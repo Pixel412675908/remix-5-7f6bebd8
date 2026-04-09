@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Check, ArrowLeft } from "lucide-react";
 
 export interface OnboardingAnswers {
   theme: string;
@@ -14,6 +14,7 @@ export interface OnboardingAnswers {
 interface OnboardingModalProps {
   open: boolean;
   onSubmit: (answers: OnboardingAnswers) => void;
+  onBack?: () => void;
 }
 
 const GENRES = [
@@ -21,7 +22,7 @@ const GENRES = [
   "Romance", "Ação", "Aventura", "Fantasia", "Thriller", "Noir", "Experimental",
 ];
 
-const OnboardingModal = ({ open, onSubmit }: OnboardingModalProps) => {
+const OnboardingModal = ({ open, onSubmit, onBack }: OnboardingModalProps) => {
   const [theme, setTheme] = useState("");
   const [genre, setGenre] = useState("");
   const [minDuration, setMinDuration] = useState(15);
@@ -63,9 +64,19 @@ const OnboardingModal = ({ open, onSubmit }: OnboardingModalProps) => {
             transition={{ duration: 0.3 }}
             className="bg-background border border-border rounded-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto"
           >
-            <div className="p-6 pb-2">
-              <h2 className="font-display text-xl font-bold text-foreground">Novo Roteiro</h2>
-              <p className="text-sm text-muted-foreground mt-1">Preencha os detalhes do seu projeto.</p>
+            <div className="p-6 pb-2 flex items-start gap-3">
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200 shrink-0 mt-0.5"
+                >
+                  <ArrowLeft strokeWidth={1.5} className="w-[18px] h-[18px]" />
+                </button>
+              )}
+              <div>
+                <h2 className="font-display text-xl font-bold text-foreground">Novo Roteiro</h2>
+                <p className="text-sm text-muted-foreground mt-1">Preencha os detalhes do seu projeto.</p>
+              </div>
             </div>
 
             <div className="px-6 pb-6 space-y-5">

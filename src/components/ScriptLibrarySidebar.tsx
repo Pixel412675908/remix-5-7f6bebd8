@@ -124,14 +124,8 @@ const ScriptLibrarySidebar = ({ open, onClose, onNewScript, onLoadScript, active
       <SheetContent side="left" className="w-80 p-0 flex flex-col">
         <SheetTitle className="sr-only">Roteiros</SheetTitle>
 
-        <div className="p-4 border-b border-border flex items-center justify-between">
+        <div className="p-4 border-b border-border">
           <h2 className="font-display text-lg text-foreground">Meus Roteiros</h2>
-          <button
-            onClick={() => { onNewScript(); onClose(); }}
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-primary hover:bg-primary/10 transition-all duration-200"
-          >
-            <Plus strokeWidth={1.5} className="w-5 h-5" />
-          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 space-y-1">
@@ -220,7 +214,15 @@ const ScriptLibrarySidebar = ({ open, onClose, onNewScript, onLoadScript, active
           )}
         </div>
 
-        <div className="p-3 border-t border-border">
+        {/* Floating + button */}
+        <div className="p-3 border-t border-border space-y-1">
+          <button
+            onClick={() => { onNewScript(); onClose(); }}
+            className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-sm font-medium text-primary-foreground bg-primary hover:opacity-90 transition-all duration-200"
+          >
+            <Plus strokeWidth={1.5} className="w-5 h-5" />
+            Novo Roteiro
+          </button>
           <button
             onClick={signOut}
             className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-destructive hover:bg-destructive/10 transition-all duration-200"
