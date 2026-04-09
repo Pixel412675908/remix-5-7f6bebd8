@@ -17,6 +17,7 @@ import type { OnboardingAnswers } from "@/components/OnboardingModal";
 interface WorkspaceProps {
   project: ProjectData;
   onboardingAnswers?: OnboardingAnswers | null;
+  questionAnswers?: Record<string, string | string[]> | null;
   onBack?: () => void;
   onNewScript?: () => void;
   onLoadScript?: (script: any) => void;
