@@ -6,9 +6,9 @@ import { Check } from "lucide-react";
 export interface OnboardingAnswers {
   theme: string;
   genre: string;
-  protagonist: string;
-  conflict: string;
-  tone: string;
+  minDuration: number;
+  maxDuration: number;
+  notes: string;
 }
 
 interface OnboardingModalProps {
@@ -16,90 +16,36 @@ interface OnboardingModalProps {
   onSubmit: (answers: OnboardingAnswers) => void;
 }
 
-const STEPS = [
-  {
-    id: "theme",
-    question: "Qual é o tema do seu roteiro?",
-    type: "text" as const,
-    placeholder: "Ex: Um músico cego que descobre que pode ver através da música...",
-  },
-  {
-    id: "genre",
-    question: "Qual o gênero?",
-    type: "single" as const,
-    options: [
-      "Comédia", "Drama", "Thriller", "Romance", "Terror",
-      "Ficção Científica", "Ação", "Aventura", "Fantasia",
-      "Documental", "Noir", "Experimental",
-    ],
-  },
-  {
-    id: "protagonist",
-    question: "Quem é o protagonista?",
-    type: "text" as const,
-    placeholder: "Descreva brevemente o personagem principal...",
-  },
-  {
-    id: "conflict",
-    question: "Qual o conflito principal?",
-    type: "text" as const,
-    placeholder: "O que está em jogo? Qual o obstáculo central?",
-  },
-  {
-    id: "tone",
-    question: "Qual o tom da história?",
-    type: "single" as const,
-    options: ["Sombrio", "Leve", "Emocional", "Tenso", "Poético", "Cru e Realista", "Com Humor"],
-  },
+const GENRES = [
+  "Drama", "Suspense", "Terror", "Comédia", "Ficção Científica",
+  "Romance", "Ação", "Aventura", "Fantasia", "Thriller", "Noir", "Experimental",
 ];
 
 const OnboardingModal = ({ open, onSubmit }: OnboardingModalProps) => {
-  const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [textInput, setTextInput] = useState("");
+  const [theme, setTheme] = useState("");
+  const [genre, setGenre] = useState("");
+  const [minDuration, setMinDuration] = useState(15);
+  const [maxDuration, setMaxDuration] = useState(120);
+  const [notes, setNotes] = useState("");
 
-  const current = STEPS[step];
-  if (!current) return null;
+  const canSubmit = theme.trim().length > 0 && genre.length > 0;
 
-  const currentValue = current.type === "text" ? textInput : (answers[current.id] || "");
-  const canProceed = currentValue.trim().length > 0;
-
-  const handleNext = () => {
-    const value = current.type === "text" ? textInput.trim() : answers[current.id];
-    const updated = { ...answers, [current.id]: value };
-    setAnswers(updated);
-    setTextInput("");
-
-    if (step < STEPS.length - 1) {
-      setStep(step + 1);
-    } else {
-      onSubmit({
-        theme: updated.theme || "",
-        genre: updated.genre || "",
-        protagonist: updated.protagonist || "",
-        conflict: updated.conflict || "",
-        tone: updated.tone || "",
-      });
-      // Reset for next use
-      setStep(0);
-      setAnswers({});
-    }
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    onSubmit({
+      theme: theme.trim(),
+      genre,
+      minDuration,
+      maxDuration,
+      notes: notes.trim(),
+    });
+    // Reset
+    setTheme("");
+    setGenre("");
+    setMinDuration(15);
+    setMaxDuration(120);
+    setNotes("");
   };
-
-  const handleBack = () => {
-    if (step > 0) {
-      if (current.type === "text") {
-        setAnswers((prev) => ({ ...prev, [current.id]: textInput.trim() }));
-      }
-      setStep(step - 1);
-      const prevStep = STEPS[step - 1];
-      if (prevStep.type === "text") {
-        setTextInput(answers[prevStep.id] || "");
-      }
-    }
-  };
-
-  const progress = ((step + 1) / STEPS.length) * 100;
 
   return (
     <AnimatePresence>
@@ -108,89 +54,115 @@ const OnboardingModal = ({ open, onSubmit }: OnboardingModalProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.96, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 20 }}
             transition={{ duration: 0.3 }}
-            className="surface-card rounded-2xl w-full max-w-lg overflow-hidden"
+            className="bg-background border border-border rounded-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto"
           >
-            {/* Progress bar */}
-            <div className="h-1 bg-muted">
-              <motion.div
-                className="h-full bg-primary"
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.3 }}
-              />
+            <div className="p-6 pb-2">
+              <h2 className="font-display text-xl font-bold text-foreground">Novo Roteiro</h2>
+              <p className="text-sm text-muted-foreground mt-1">Preencha os detalhes do seu projeto.</p>
             </div>
 
-            <div className="p-6 pb-3">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                Novo Roteiro — {step + 1}/{STEPS.length}
-              </p>
-            </div>
+            <div className="px-6 pb-6 space-y-5">
+              {/* TEMA */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Tema <span className="text-[#dc2626]">*</span>
+                </label>
+                <input
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value)}
+                  placeholder="Ex: Um músico cego que descobre que pode ver através da música..."
+                  className="mt-1.5 w-full bg-muted/50 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-all duration-200"
+                  autoFocus
+                />
+              </div>
 
-            <div className="px-6 pb-6">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={current.id}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <h3 className="font-display text-lg text-foreground mb-5 leading-snug">
-                    {current.question}
-                  </h3>
+              {/* GÊNERO */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Gênero <span className="text-[#dc2626]">*</span>
+                </label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {GENRES.map((g) => (
+                    <button
+                      key={g}
+                      onClick={() => setGenre(g)}
+                      className={`px-3.5 py-2 rounded-xl border text-sm font-medium transition-all duration-150 ${
+                        genre === g
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-muted/20 text-foreground hover:border-primary/30"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        {g}
+                        {genre === g && <Check strokeWidth={1.5} className="w-3.5 h-3.5 text-primary" />}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                  {current.type === "text" && (
-                    <textarea
-                      value={textInput}
-                      onChange={(e) => setTextInput(e.target.value)}
-                      placeholder={current.placeholder}
-                      rows={3}
-                      className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none focus:border-primary/50 transition-all duration-200"
-                      autoFocus
+              {/* DURAÇÃO */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Duração (minutos)
+                </label>
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="flex-1">
+                    <span className="text-[11px] text-muted-foreground">Mínimo</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={maxDuration}
+                      value={minDuration}
+                      onChange={(e) => setMinDuration(Math.max(1, Number(e.target.value)))}
+                      className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-all duration-200"
                     />
-                  )}
+                  </div>
+                  <span className="text-muted-foreground mt-4">—</span>
+                  <div className="flex-1">
+                    <span className="text-[11px] text-muted-foreground">Máximo</span>
+                    <input
+                      type="number"
+                      min={minDuration}
+                      max={300}
+                      value={maxDuration}
+                      onChange={(e) => setMaxDuration(Math.max(minDuration, Number(e.target.value)))}
+                      className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-all duration-200"
+                    />
+                  </div>
+                </div>
+              </div>
 
-                  {current.type === "single" && current.options && (
-                    <div className="flex flex-wrap gap-2">
-                      {current.options.map((opt) => (
-                        <button
-                          key={opt}
-                          onClick={() => setAnswers((prev) => ({ ...prev, [current.id]: opt }))}
-                          className={`px-4 py-2.5 rounded-xl border text-sm font-medium transition-all duration-200 ${
-                            answers[current.id] === opt
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-muted/20 text-foreground hover:border-primary/30"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span>{opt}</span>
-                            {answers[current.id] === opt && <Check strokeWidth={1.5} className="w-4 h-4 text-primary" />}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </div>
+              {/* OBSERVAÇÃO */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Observação <span className="text-muted-foreground/60">(opcional)</span>
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Qualquer detalhe extra que queira compartilhar..."
+                  rows={3}
+                  className="mt-1.5 w-full bg-muted/50 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none focus:border-primary/50 transition-all duration-200"
+                />
+              </div>
 
-            <div className="p-6 pt-0 flex justify-between items-center">
-              <button
-                onClick={handleBack}
-                disabled={step === 0}
-                className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors duration-200"
+              {/* SUBMIT */}
+              <Button
+                variant="brand"
+                className="w-full"
+                size="lg"
+                onClick={handleSubmit}
+                disabled={!canSubmit}
               >
-                Voltar
-              </button>
-              <Button variant="brand" onClick={handleNext} disabled={!canProceed} className="px-8">
-                {step < STEPS.length - 1 ? "Próxima" : "Iniciar Roteiro"}
+                Criar Roteiro
               </Button>
             </div>
           </motion.div>
