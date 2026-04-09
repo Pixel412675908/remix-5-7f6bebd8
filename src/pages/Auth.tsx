@@ -21,9 +21,9 @@ const Auth = () => {
     if (/[A-Z]/.test(pw)) score++;
     if (/[0-9]/.test(pw)) score++;
     if (/[^a-zA-Z0-9]/.test(pw)) score++;
-    if (score <= 2) return { level: 1, label: "Fraca", color: "bg-destructive" };
-    if (score <= 3) return { level: 2, label: "Média", color: "bg-primary" };
-    return { level: 3, label: "Forte", color: "bg-accent-foreground" };
+    if (score <= 2) return { level: 1, label: "Fraca", color: "bg-[#dc2626]" };
+    if (score <= 3) return { level: 2, label: "Média", color: "bg-[#ea580c]" };
+    return { level: 3, label: "Forte", color: "bg-[#16a34a]" };
   };
 
   const strength = getPasswordStrength(password);
@@ -135,11 +135,11 @@ const Auth = () => {
                   Senha {strength.label}
                 </p>
                 <ul className="text-[10px] text-muted-foreground space-y-0.5">
-                  <li className={password.length >= 8 ? "text-accent-foreground" : ""}>Mínimo 8 caracteres</li>
-                  <li className={/[a-z]/.test(password) ? "text-accent-foreground" : ""}>Letra minúscula</li>
-                  <li className={/[A-Z]/.test(password) ? "text-accent-foreground" : ""}>Letra maiúscula</li>
-                  <li className={/[0-9]/.test(password) ? "text-accent-foreground" : ""}>Números</li>
-                  <li className={/[^a-zA-Z0-9]/.test(password) ? "text-accent-foreground" : ""}>Dígito especial ($@&#)</li>
+                  <li className={password.length >= 8 ? "text-[#16a34a]" : ""}>Mínimo 8 caracteres</li>
+                  <li className={/[a-z]/.test(password) ? "text-[#16a34a]" : ""}>Letra minúscula</li>
+                  <li className={/[A-Z]/.test(password) ? "text-[#16a34a]" : ""}>Letra maiúscula</li>
+                  <li className={/[0-9]/.test(password) ? "text-[#16a34a]" : ""}>Números</li>
+                  <li className={/[^a-zA-Z0-9]/.test(password) ? "text-[#16a34a]" : ""}>Dígito especial ($@&#)</li>
                 </ul>
               </div>
             )}

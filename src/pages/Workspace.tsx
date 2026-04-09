@@ -107,7 +107,7 @@ const Workspace = ({ project, onboardingAnswers, onBack, onNewScript, onLoadScri
 
   const generateFirstQuestion = async (answers: OnboardingAnswers) => {
     setIsLoading(true);
-    const summary = `Tema: ${answers.theme}\nGênero: ${answers.genre}\nProtagonista: ${answers.protagonist}\nConflito principal: ${answers.conflict}\nTom: ${answers.tone}`;
+    const summary = `Tema: ${answers.theme}\nGênero: ${answers.genre}\nDuração: ${answers.minDuration}-${answers.maxDuration} min\nObservações: ${answers.notes || "Nenhuma"}`;
 
     try {
       const response = await callAI(
@@ -242,7 +242,7 @@ const Workspace = ({ project, onboardingAnswers, onBack, onNewScript, onLoadScri
   };
 
   const contextSummary = onboardingAnswers
-    ? `Tema: ${onboardingAnswers.theme}\nGênero: ${onboardingAnswers.genre}\nProtagonista: ${onboardingAnswers.protagonist}\nConflito: ${onboardingAnswers.conflict}\nTom: ${onboardingAnswers.tone}`
+    ? `Tema: ${onboardingAnswers.theme}\nGênero: ${onboardingAnswers.genre}\nDuração: ${onboardingAnswers.minDuration}-${onboardingAnswers.maxDuration} min\nObservações: ${onboardingAnswers.notes || "Nenhuma"}`
     : project.notes || "";
 
   const handleSendMessage = useCallback(

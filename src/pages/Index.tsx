@@ -47,9 +47,9 @@ const Index = () => {
     setProject({
       theme: answers.theme,
       genre: answers.genre,
-      notes: `Protagonista: ${answers.protagonist}\nConflito: ${answers.conflict}\nTom: ${answers.tone}`,
-      minDuration: 15,
-      maxDuration: 30,
+      notes: answers.notes || "",
+      minDuration: answers.minDuration,
+      maxDuration: answers.maxDuration,
     });
   }, []);
 
