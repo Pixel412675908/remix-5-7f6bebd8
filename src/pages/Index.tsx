@@ -77,15 +77,13 @@ const Index = () => {
 
   return (
     <div className="min-h-[100dvh] bg-background overflow-hidden">
-      {/* Top bar - only settings */}
+      {/* Top bar - theme toggle + settings */}
       <div className="fixed top-0 right-0 z-30 flex items-center gap-1 p-4">
+        <ThemeToggle position="inline" />
         <button onClick={() => setShowSettings(true)} className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200">
           <Settings strokeWidth={1.5} className="w-[18px] h-[18px]" />
         </button>
       </div>
-
-      {/* Theme toggle - bottom right */}
-      <ThemeToggle position="fixed-bottom-right" />
 
       {/* Hero */}
       <section className="min-h-[100dvh] flex flex-col items-center justify-center px-6">
@@ -181,7 +179,7 @@ const Index = () => {
         </Button>
       </section>
 
-      <OnboardingModal open={showOnboarding} onSubmit={handleOnboardingSubmit} />
+      <OnboardingModal open={showOnboarding} onSubmit={handleOnboardingSubmit} onBack={() => setShowOnboarding(false)} />
 
       <ProjectSetupModal
         open={showImprove}
@@ -190,6 +188,7 @@ const Index = () => {
           setShowImprove(false);
         }}
         isImproveMode
+        onBack={() => setShowImprove(false)}
       />
       
       <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
