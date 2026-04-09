@@ -21,9 +21,9 @@ const Auth = () => {
     if (/[A-Z]/.test(pw)) score++;
     if (/[0-9]/.test(pw)) score++;
     if (/[^a-zA-Z0-9]/.test(pw)) score++;
-    if (score <= 2) return { level: 1, label: "Fraca", color: "bg-destructive" };
-    if (score <= 3) return { level: 2, label: "Média", color: "bg-primary" };
-    return { level: 3, label: "Forte", color: "bg-accent-foreground" };
+    if (score <= 2) return { level: 1, label: "Fraca", color: "bg-[#dc2626]" };
+    if (score <= 3) return { level: 2, label: "Média", color: "bg-[#ea580c]" };
+    return { level: 3, label: "Forte", color: "bg-[#16a34a]" };
   };
 
   const strength = getPasswordStrength(password);
