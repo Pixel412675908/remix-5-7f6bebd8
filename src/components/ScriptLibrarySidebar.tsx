@@ -6,16 +6,33 @@ import { Plus, MoreHorizontal, PenLine, Pin, Trash2, LogOut, FileText } from "lu
 import { toast } from "sonner";
 import { format } from "date-fns";
 
+interface SavedScript {
+  id: string;
+  title: string;
+  theme: string;
+  genre: string | null;
+  created_at: string;
+  current_stage: string;
+  status: string;
+  min_duration: number;
+  max_duration: number;
+  notes: string | null;
+  pipeline_outputs: any;
+  question_answers: any;
+  pinned?: boolean;
+}
+
 interface ScriptLibrarySidebarProps {
   open: boolean;
   onClose: () => void;
   onNewScript: () => void;
-  onLoadScript?: (script: any) => void;
+  onLoadScript?: (script: SavedScript) => void;
+  activeScripts?: SavedScript[];
 }
 
-const ScriptLibrarySidebar = ({ open, onClose, onNewScript, onLoadScript }: ScriptLibrarySidebarProps) => {
+const ScriptLibrarySidebar = ({ open, onClose, onNewScript, onLoadScript, activeScripts }: ScriptLibrarySidebarProps) => {
   const { user, signOut } = useAuth();
-  const [scripts, setScripts] = useState<any[]>([]);
+  const [scripts, setScripts] = useState<SavedScript[]>([]);
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -25,6 +42,25 @@ const ScriptLibrarySidebar = ({ open, onClose, onNewScript, onLoadScript }: Scri
     if (open && user) fetchScripts();
   }, [open, user]);
 
+  // Merge activeScripts (from localStorage) with DB scripts
+  useEffect(() => {
+    if (activeScripts && activeScripts.length > 0) {
+      setScripts(prev => {
+        const dbIds = new Set(prev.map(s => s.id));
+        const merged = [...prev];
+        for (const as of activeScripts) {
+          if (!dbIds.has(as.id)) {
+            merged.unshift(as);
+          } else {
+            const idx = merged.findIndex(s => s.id === as.id);
+            if (idx >= 0) merged[idx] = { ...merged[idx], ...as };
+          }
+        }
+        return merged;
+      });
+    }
+  }, [activeScripts]);
+
   const fetchScripts = async () => {
     if (!user) return;
     setLoading(true);
@@ -33,7 +69,7 @@ const ScriptLibrarySidebar = ({ open, onClose, onNewScript, onLoadScript }: Scri
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
-    setScripts(data || []);
+    setScripts(data as SavedScript[] || []);
     setLoading(false);
   };
 
@@ -50,6 +86,13 @@ const ScriptLibrarySidebar = ({ open, onClose, onNewScript, onLoadScript }: Scri
     setScripts((prev) => prev.map((s) => s.id === id ? { ...s, title: renameValue.trim() } : s));
     setRenaming(null);
     setMenuOpen(null);
+  };
+
+  const progressForStage = (stage: string) => {
+    const stages = ["logline", "structure", "characters", "scenes", "writing", "revision", "dialogues", "rhythm", "final"];
+    const idx = stages.indexOf(stage);
+    if (idx < 0) return 0;
+    return Math.round(((idx + 1) / stages.length) * 100);
   };
 
   return (
@@ -100,13 +143,16 @@ const ScriptLibrarySidebar = ({ open, onClose, onNewScript, onLoadScript }: Scri
                       <p className="text-sm font-medium text-foreground truncate">{s.title}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[10px] text-muted-foreground">
-                          {format(new Date(s.created_at), "dd/MM/yy")}
+                          {format(new Date(s.created_at), "dd/MM/yy HH:mm")}
                         </span>
                         {s.genre && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-primary/20 text-primary/80">
                             {s.genre}
                           </span>
                         )}
+                        <span className="text-[10px] text-muted-foreground ml-auto">
+                          {progressForStage(s.current_stage)}%
+                        </span>
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{s.theme}</p>
                     </>

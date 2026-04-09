@@ -1,11 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { useTheme, useTranslation } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
-import {
-  Moon, Sun, Globe, Type, Trash2, User, LogOut
-} from "lucide-react";
+import { Globe, Type, Trash2, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SettingsModalProps {
@@ -15,7 +13,7 @@ interface SettingsModalProps {
 }
 
 const SettingsModal = ({ open, onClose, onClearHistory }: SettingsModalProps) => {
-  const { theme, toggleTheme, fontSize, setFontSize, language, setLanguage } = useTheme();
+  const { fontSize, setFontSize, language, setLanguage } = useTheme();
   const { user, signOut } = useAuth();
   const t = useTranslation();
   const [confirmClear, setConfirmClear] = useState(false);
@@ -30,18 +28,6 @@ const SettingsModal = ({ open, onClose, onClearHistory }: SettingsModalProps) =>
         </DialogHeader>
 
         <div className="space-y-3 mt-2">
-          {/* Dark Mode */}
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
-            <div className="flex items-center gap-3">
-              {theme === "dark" ? <Sun strokeWidth={1.5} className="w-[18px] h-[18px] text-primary" /> : <Moon strokeWidth={1.5} className="w-[18px] h-[18px] text-primary" />}
-              <div>
-                <p className="text-sm font-medium text-foreground">{t("darkMode")}</p>
-                <p className="text-[11px] text-muted-foreground">{theme === "dark" ? t("enabled") : t("disabled")}</p>
-              </div>
-            </div>
-            <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
-          </div>
-
           {/* Language */}
           <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
             <div className="flex items-center gap-3">

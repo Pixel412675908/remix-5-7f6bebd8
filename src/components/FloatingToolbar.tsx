@@ -1,4 +1,4 @@
-import { Moon, Sun, FolderOpen, Settings } from "lucide-react";
+import { Moon, Sun, FolderOpen, Settings, BarChart2 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { PIPELINE_STAGES, type PipelineStage } from "@/lib/pipeline";
 
@@ -23,6 +23,7 @@ const FloatingToolbar = ({ onSettingsOpen, onArchiveOpen, onProgressClick, curre
         className="flex items-center gap-2 mr-auto hover:opacity-80 transition-opacity duration-150"
         title="Ver pipeline"
       >
+        <BarChart2 strokeWidth={1.5} className="w-[18px] h-[18px] text-primary" />
         <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
           <div
             className="h-full bg-primary rounded-full transition-all duration-300"

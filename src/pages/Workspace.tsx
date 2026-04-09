@@ -62,6 +62,7 @@ const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProp
   const [pipelineModalOpen, setPipelineModalOpen] = useState(false);
   const [showQuestions, setShowQuestions] = useState(true);
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string | string[]> | null>(null);
+  const [currentScriptId, setCurrentScriptId] = useState<string | null>(null);
   const conversationRef = useRef<Array<{ role: string; content: string }>>([]);
   const questionsAskedRef = useRef<string[]>([]);
 
@@ -76,6 +77,7 @@ const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProp
           setCurrentStage(session.currentStage || "deepening");
           setCompletedStages(session.completedStages || []);
           setQuestionAnswers(session.questionAnswers || null);
+          setCurrentScriptId(session.currentScriptId || null);
           conversationRef.current = session.conversationHistory || [];
           questionsAskedRef.current = session.questionsAsked || [];
           if (session.questionAnswers) setShowQuestions(false);
@@ -93,12 +95,62 @@ const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProp
         currentStage,
         completedStages,
         questionAnswers,
+        currentScriptId,
         conversationHistory: conversationRef.current,
         questionsAsked: questionsAskedRef.current,
       };
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     } catch {}
-  }, [messages, currentStage, completedStages, questionAnswers]);
+  }, [messages, currentStage, completedStages, questionAnswers, currentScriptId]);
+
+  // Auto-save to Supabase when messages change
+  const saveToSupabase = useCallback(async (msgs: ChatMessage[]) => {
+    if (!user || msgs.length === 0) return;
+
+    const now = new Date();
+    const defaultTitle = `Roteiro — ${now.toLocaleDateString("pt-BR")} ${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+
+    const scriptData = {
+      user_id: user.id,
+      theme: project.theme,
+      genre: project.genre || null,
+      notes: project.notes || null,
+      min_duration: project.minDuration,
+      max_duration: project.maxDuration,
+      current_stage: currentStage === "deepening" ? "logline" : currentStage,
+      status: "in_progress",
+      pipeline_outputs: { messages: msgs.map(m => ({ ...m, timestamp: m.timestamp.toISOString() })) },
+      question_answers: questionAnswers,
+    };
+
+    try {
+      if (currentScriptId) {
+        // Update existing
+        await supabase
+          .from("scripts")
+          .update({ ...scriptData, updated_at: now.toISOString() })
+          .eq("id", currentScriptId);
+      } else {
+        // Create new
+        const { data } = await supabase
+          .from("scripts")
+          .insert({ ...scriptData, title: defaultTitle })
+          .select("id")
+          .single();
+        if (data) setCurrentScriptId(data.id);
+      }
+    } catch (err) {
+      console.error("Auto-save error:", err);
+    }
+  }, [user, project, currentStage, questionAnswers, currentScriptId]);
+
+  // Trigger auto-save when messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      const timer = setTimeout(() => saveToSupabase(messages), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [messages, saveToSupabase]);
 
   const callAI = async (
     userContent: string,
@@ -220,6 +272,7 @@ const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProp
     setMessages([]);
     conversationRef.current = [];
     questionsAskedRef.current = [];
+    setCurrentScriptId(null);
     localStorage.removeItem(SESSION_KEY);
   };
 
