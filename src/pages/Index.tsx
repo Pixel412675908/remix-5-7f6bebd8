@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, Settings } from "lucide-react";
+import { Moon, Sun, Settings, ArrowLeft } from "lucide-react";
 import ProjectSetupModal from "@/components/ProjectSetupModal";
 import SettingsModal from "@/components/SettingsModal";
 import Workspace from "@/pages/Workspace";
@@ -51,7 +51,7 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
+    <div className="min-h-[100dvh] bg-background overflow-hidden">
       {/* Top bar */}
       <div className="fixed top-0 right-0 z-30 flex items-center gap-1 p-4">
         <button onClick={toggleTheme} className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-150">
@@ -63,7 +63,7 @@ const Index = () => {
       </div>
 
       {/* Hero */}
-      <section className="min-h-screen flex flex-col items-center justify-center px-6">
+      <section className="min-h-[100dvh] flex flex-col items-center justify-center px-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -158,7 +158,6 @@ const Index = () => {
 
       <ProjectSetupModal open={showSetup} onSubmit={(data) => { setProject(data); setShowSetup(false); }} />
       
-      {/* Improve existing script modal */}
       <ProjectSetupModal
         open={showImprove}
         onSubmit={(data) => {

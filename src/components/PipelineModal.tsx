@@ -36,7 +36,7 @@ const PipelineModal = ({ open, onClose, currentStage, completedStages }: Pipelin
           <p className="text-sm text-muted-foreground">{progressPercent}% concluído</p>
         </DialogHeader>
 
-        <div className="mt-2 w-full h-2 rounded-full bg-muted overflow-hidden">
+        <div className="mt-2 w-full h-1.5 rounded-full bg-muted overflow-hidden">
           <motion.div
             className="h-full bg-primary rounded-full"
             initial={{ width: 0 }}
@@ -59,16 +59,17 @@ const PipelineModal = ({ open, onClose, currentStage, completedStages }: Pipelin
                 transition={{ delay: index * 0.04 }}
                 className="relative flex items-start gap-3"
               >
-                {/* Connecting line */}
+                {/* Connecting line — thin 1px */}
                 {index < PIPELINE_STAGES.length - 1 && (
                   <div
                     className={cn(
                       "absolute left-[11px] top-8 w-px h-8",
-                      isCompleted ? "bg-primary/40" : "bg-[#e5e7eb]"
+                      isCompleted ? "bg-primary/40" : "bg-border"
                     )}
                   />
                 )}
 
+                {/* Icon — bare, no container */}
                 <div className="relative shrink-0 w-[22px] h-[22px] mt-0.5 flex items-center justify-center">
                   {isCompleted ? (
                     <CheckCircle2 strokeWidth={1.5} className="w-[18px] h-[18px] text-primary" />

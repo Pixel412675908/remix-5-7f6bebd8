@@ -227,7 +227,7 @@ const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProp
     currentStage === "deepening" || currentStage === "input" ? "logline" : currentStage;
 
   return (
-    <div className="flex h-[100dvh] bg-background">
+    <div className="flex h-[100dvh] bg-background overflow-hidden">
       {/* Desktop sidebar */}
       <PipelineSidebar currentStage={displayStage} completedStages={completedStages} />
 
@@ -240,11 +240,12 @@ const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProp
       />
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <WorkspaceHeader
           project={project}
           currentStage={displayStage}
           onMenuToggle={() => setScriptLibraryOpen(true)}
+          onBack={onBack}
         />
 
         <ChatInterface

@@ -29,7 +29,6 @@ const Auth = () => {
 
   const strength = getPasswordStrength(password);
 
-  // Use username as email for auth (username@cinescript.app)
   const generateEmail = (uname: string) => `${uname.toLowerCase().replace(/[^a-z0-9]/g, "")}@cinescript.app`;
 
   const handleSubmit = async () => {
@@ -67,10 +66,10 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-5">
+    <div className="min-h-[100dvh] bg-background flex items-center justify-center p-5">
       <button
         onClick={toggleTheme}
-        className="fixed top-5 right-5 z-50 w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-150"
+        className="fixed top-5 right-5 z-50 w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-150"
       >
         {theme === "dark" ? <Sun strokeWidth={1.5} className="w-[18px] h-[18px]" /> : <Moon strokeWidth={1.5} className="w-[18px] h-[18px]" />}
       </button>

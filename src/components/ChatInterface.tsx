@@ -23,7 +23,6 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, placeholder }: Chat
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Close context menu on click outside
   useEffect(() => {
     const handler = () => setContextMenu(null);
     if (contextMenu) {
@@ -75,7 +74,7 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, placeholder }: Chat
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
         <AnimatePresence initial={false}>
@@ -163,7 +162,7 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, placeholder }: Chat
       </div>
 
       {/* Input */}
-      <div className="px-4 pb-2">
+      <div className="px-4 pb-2 shrink-0">
         <div className="surface-card rounded-xl flex items-end gap-2 p-2">
           <textarea
             ref={textareaRef}
