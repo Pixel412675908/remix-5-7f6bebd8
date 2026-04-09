@@ -245,8 +245,11 @@ const Workspace = ({ project, onboardingAnswers, questionAnswers, onBack, onNewS
     return result;
   };
 
+  const qaSummaryCtx = questionAnswers
+    ? "\n" + Object.entries(questionAnswers).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join("\n")
+    : "";
   const contextSummary = onboardingAnswers
-    ? `Tema: ${onboardingAnswers.theme}\nGênero: ${onboardingAnswers.genre}\nDuração: ${onboardingAnswers.minDuration}-${onboardingAnswers.maxDuration} min\nObservações: ${onboardingAnswers.notes || "Nenhuma"}`
+    ? `Tema: ${onboardingAnswers.theme}\nGênero: ${onboardingAnswers.genre}\nDuração: ${onboardingAnswers.minDuration}-${onboardingAnswers.maxDuration} min\nObservações: ${onboardingAnswers.notes || "Nenhuma"}${qaSummaryCtx}`
     : project.notes || "";
 
   const handleSendMessage = useCallback(
