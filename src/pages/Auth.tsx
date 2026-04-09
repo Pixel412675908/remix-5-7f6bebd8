@@ -2,9 +2,9 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useTheme } from "@/hooks/useTheme";
-import { Moon, Sun, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -12,7 +12,6 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { theme, toggleTheme } = useTheme();
 
   const getPasswordStrength = (pw: string) => {
     if (!pw) return { level: 0, label: "", color: "" };
@@ -22,9 +21,9 @@ const Auth = () => {
     if (/[A-Z]/.test(pw)) score++;
     if (/[0-9]/.test(pw)) score++;
     if (/[^a-zA-Z0-9]/.test(pw)) score++;
-    if (score <= 2) return { level: 1, label: "Fraca", color: "bg-red-500" };
-    if (score <= 3) return { level: 2, label: "Média", color: "bg-orange-500" };
-    return { level: 3, label: "Forte", color: "bg-green-500" };
+    if (score <= 2) return { level: 1, label: "Fraca", color: "bg-destructive" };
+    if (score <= 3) return { level: 2, label: "Média", color: "bg-primary" };
+    return { level: 3, label: "Forte", color: "bg-accent-foreground" };
   };
 
   const strength = getPasswordStrength(password);
@@ -67,12 +66,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-[100dvh] bg-background flex items-center justify-center p-5">
-      <button
-        onClick={toggleTheme}
-        className="fixed top-5 right-5 z-50 w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-150"
-      >
-        {theme === "dark" ? <Sun strokeWidth={1.5} className="w-[18px] h-[18px]" /> : <Moon strokeWidth={1.5} className="w-[18px] h-[18px]" />}
-      </button>
+      <ThemeToggle position="fixed-bottom-right" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -99,7 +93,7 @@ const Auth = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Seu nome de usuário"
-              className="mt-1.5 w-full bg-muted/50 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-all duration-150"
+              className="mt-1.5 w-full bg-muted/50 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-all duration-200"
             />
           </div>
 
@@ -114,12 +108,12 @@ const Auth = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-                className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 pr-12 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-all duration-150"
+                className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 pr-12 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-all duration-200"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors duration-150"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors duration-200"
               >
                 {showPassword ? <EyeOff strokeWidth={1.5} className="w-4 h-4" /> : <Eye strokeWidth={1.5} className="w-4 h-4" />}
               </button>
@@ -131,24 +125,21 @@ const Auth = () => {
                   {[1, 2, 3].map((i) => (
                     <div
                       key={i}
-                      className={`h-1.5 flex-1 rounded-full transition-all duration-150 ${
+                      className={`h-1.5 flex-1 rounded-full transition-all duration-200 ${
                         i <= strength.level ? strength.color : "bg-muted"
                       }`}
                     />
                   ))}
                 </div>
-                <p className={`text-xs ${
-                  strength.level === 1 ? "text-red-500" :
-                  strength.level === 2 ? "text-orange-500" : "text-green-500"
-                }`}>
+                <p className="text-xs text-muted-foreground">
                   Senha {strength.label}
                 </p>
                 <ul className="text-[10px] text-muted-foreground space-y-0.5">
-                  <li className={password.length >= 8 ? "text-green-500" : ""}>Mínimo 8 caracteres</li>
-                  <li className={/[a-z]/.test(password) ? "text-green-500" : ""}>Letra minúscula</li>
-                  <li className={/[A-Z]/.test(password) ? "text-green-500" : ""}>Letra maiúscula</li>
-                  <li className={/[0-9]/.test(password) ? "text-green-500" : ""}>Números</li>
-                  <li className={/[^a-zA-Z0-9]/.test(password) ? "text-green-500" : ""}>Dígito especial ($@&#)</li>
+                  <li className={password.length >= 8 ? "text-accent-foreground" : ""}>Mínimo 8 caracteres</li>
+                  <li className={/[a-z]/.test(password) ? "text-accent-foreground" : ""}>Letra minúscula</li>
+                  <li className={/[A-Z]/.test(password) ? "text-accent-foreground" : ""}>Letra maiúscula</li>
+                  <li className={/[0-9]/.test(password) ? "text-accent-foreground" : ""}>Números</li>
+                  <li className={/[^a-zA-Z0-9]/.test(password) ? "text-accent-foreground" : ""}>Dígito especial ($@&#)</li>
                 </ul>
               </div>
             )}
@@ -169,7 +160,7 @@ const Auth = () => {
           {isLogin ? "Não tem conta?" : "Já tem conta?"}{" "}
           <button
             onClick={() => { setIsLogin(!isLogin); setPassword(""); }}
-            className="text-primary hover:underline font-medium transition-colors duration-150"
+            className="text-primary hover:underline font-medium transition-colors duration-200"
           >
             {isLogin ? "Criar conta" : "Entrar"}
           </button>

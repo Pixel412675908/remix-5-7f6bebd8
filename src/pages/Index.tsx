@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, Settings, ArrowLeft } from "lucide-react";
+import { Settings } from "lucide-react";
 import ProjectSetupModal from "@/components/ProjectSetupModal";
+import OnboardingModal from "@/components/OnboardingModal";
+import type { OnboardingAnswers } from "@/components/OnboardingModal";
 import SettingsModal from "@/components/SettingsModal";
 import Workspace from "@/pages/Workspace";
-import { useTheme } from "@/hooks/useTheme";
+import ThemeToggle from "@/components/ThemeToggle";
 import type { ProjectData } from "@/lib/pipeline";
 import { PIPELINE_STAGES } from "@/lib/pipeline";
 import {
@@ -26,18 +28,41 @@ const STAGE_ICONS: Record<string, React.ElementType> = {
 
 const Index = () => {
   const [project, setProject] = useState<ProjectData | null>(null);
-  const [showSetup, setShowSetup] = useState(false);
+  const [onboardingAnswers, setOnboardingAnswers] = useState<OnboardingAnswers | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showImprove, setShowImprove] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const { theme, toggleTheme } = useTheme();
+
+  const handleNewScript = useCallback(() => {
+    // Clear any previous session
+    localStorage.removeItem("cinescript-session");
+    setProject(null);
+    setOnboardingAnswers(null);
+    setShowOnboarding(true);
+  }, []);
+
+  const handleOnboardingSubmit = useCallback((answers: OnboardingAnswers) => {
+    setShowOnboarding(false);
+    setOnboardingAnswers(answers);
+    setProject({
+      theme: answers.theme,
+      genre: answers.genre,
+      notes: `Protagonista: ${answers.protagonist}\nConflito: ${answers.conflict}\nTom: ${answers.tone}`,
+      minDuration: 15,
+      maxDuration: 30,
+    });
+  }, []);
 
   if (project) {
     return (
       <Workspace
         project={project}
-        onBack={() => setProject(null)}
-        onNewScript={() => { setProject(null); setShowSetup(true); }}
+        onboardingAnswers={onboardingAnswers}
+        onBack={() => { setProject(null); setOnboardingAnswers(null); }}
+        onNewScript={handleNewScript}
         onLoadScript={(s) => {
+          localStorage.removeItem("cinescript-session");
+          setOnboardingAnswers(null);
           setProject({
             theme: s.theme,
             genre: s.genre || "",
@@ -52,15 +77,15 @@ const Index = () => {
 
   return (
     <div className="min-h-[100dvh] bg-background overflow-hidden">
-      {/* Top bar */}
+      {/* Top bar - only settings */}
       <div className="fixed top-0 right-0 z-30 flex items-center gap-1 p-4">
-        <button onClick={toggleTheme} className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-150">
-          {theme === "dark" ? <Sun strokeWidth={1.5} className="w-[18px] h-[18px]" /> : <Moon strokeWidth={1.5} className="w-[18px] h-[18px]" />}
-        </button>
-        <button onClick={() => setShowSettings(true)} className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-150">
+        <button onClick={() => setShowSettings(true)} className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200">
           <Settings strokeWidth={1.5} className="w-[18px] h-[18px]" />
         </button>
       </div>
+
+      {/* Theme toggle - bottom right */}
+      <ThemeToggle position="fixed-bottom-right" />
 
       {/* Hero */}
       <section className="min-h-[100dvh] flex flex-col items-center justify-center px-6">
@@ -79,7 +104,7 @@ const Index = () => {
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-            <Button variant="brand" size="lg" onClick={() => setShowSetup(true)} className="px-10">
+            <Button variant="brand" size="lg" onClick={handleNewScript} className="px-10">
               Criar Roteiro
             </Button>
             <Button variant="brand-outline" size="lg" onClick={() => setShowImprove(true)} className="px-10">
@@ -108,11 +133,11 @@ const Index = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.05 }}
-                  className="surface-card rounded-xl p-3 flex flex-col items-center text-center group hover:border-primary/30 transition-all duration-150 cursor-default"
+                  className="surface-card rounded-xl p-3 flex flex-col items-center text-center group hover:border-primary/30 transition-all duration-200 cursor-default"
                 >
                   <Icon
                     strokeWidth={1.5}
-                    className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors duration-150 mb-2"
+                    className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors duration-200 mb-2"
                   />
                   <p className="text-[11px] font-medium text-foreground">{stage.label}</p>
                   <p className="text-[9px] text-muted-foreground mt-0.5 leading-tight hidden md:block">
@@ -151,13 +176,13 @@ const Index = () => {
       {/* CTA */}
       <section className="py-16 px-6 text-center border-t border-border">
         <h2 className="font-display text-2xl text-foreground mb-4">Pronto para criar?</h2>
-        <Button variant="brand" size="lg" onClick={() => setShowSetup(true)} className="px-12">
+        <Button variant="brand" size="lg" onClick={handleNewScript} className="px-12">
           Começar Agora
         </Button>
       </section>
 
-      <ProjectSetupModal open={showSetup} onSubmit={(data) => { setProject(data); setShowSetup(false); }} />
-      
+      <OnboardingModal open={showOnboarding} onSubmit={handleOnboardingSubmit} />
+
       <ProjectSetupModal
         open={showImprove}
         onSubmit={(data) => {

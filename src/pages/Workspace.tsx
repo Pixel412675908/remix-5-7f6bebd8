@@ -2,21 +2,21 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import PipelineSidebar from "@/components/PipelineSidebar";
 import ChatInterface from "@/components/ChatInterface";
 import WorkspaceHeader from "@/components/WorkspaceHeader";
-import QuestionModal from "@/components/QuestionModal";
 import SettingsModal from "@/components/SettingsModal";
 import FloatingToolbar from "@/components/FloatingToolbar";
 import ArchiveModal from "@/components/ArchiveModal";
 import PipelineModal from "@/components/PipelineModal";
 import ScriptLibrarySidebar from "@/components/ScriptLibrarySidebar";
-import { DEEPENING_QUESTIONS } from "@/lib/questions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { ProjectData, ChatMessage, PipelineStage } from "@/lib/pipeline";
 import { PIPELINE_STAGES } from "@/lib/pipeline";
+import type { OnboardingAnswers } from "@/components/OnboardingModal";
 
 interface WorkspaceProps {
   project: ProjectData;
+  onboardingAnswers?: OnboardingAnswers | null;
   onBack?: () => void;
   onNewScript?: () => void;
   onLoadScript?: (script: any) => void;
@@ -50,7 +50,7 @@ const STAGE_PROVIDERS: Record<string, { provider: string; fallback: string }> = 
 
 const SESSION_KEY = "cinescript-session";
 
-const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProps) => {
+const Workspace = ({ project, onboardingAnswers, onBack, onNewScript, onLoadScript }: WorkspaceProps) => {
   const { user } = useAuth();
   const [currentStage, setCurrentStage] = useState<PipelineStage>("deepening");
   const [completedStages, setCompletedStages] = useState<PipelineStage[]>([]);
@@ -60,50 +60,98 @@ const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProp
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [pipelineModalOpen, setPipelineModalOpen] = useState(false);
-  const [showQuestions, setShowQuestions] = useState(true);
-  const [questionAnswers, setQuestionAnswers] = useState<Record<string, string | string[]> | null>(null);
   const [currentScriptId, setCurrentScriptId] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
   const conversationRef = useRef<Array<{ role: string; content: string }>>([]);
   const questionsAskedRef = useRef<string[]>([]);
 
-  // Restore session on mount
+  // On mount: either restore session or start fresh with onboarding answers
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(SESSION_KEY);
-      if (saved) {
-        const session = JSON.parse(saved);
-        if (session.projectTheme === project.theme) {
-          setMessages(session.messages?.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) || []);
-          setCurrentStage(session.currentStage || "deepening");
-          setCompletedStages(session.completedStages || []);
-          setQuestionAnswers(session.questionAnswers || null);
-          setCurrentScriptId(session.currentScriptId || null);
-          conversationRef.current = session.conversationHistory || [];
-          questionsAskedRef.current = session.questionsAsked || [];
-          if (session.questionAnswers) setShowQuestions(false);
+    if (initialized) return;
+
+    // Try to restore session only if no new onboarding answers
+    if (!onboardingAnswers) {
+      try {
+        const saved = localStorage.getItem(SESSION_KEY);
+        if (saved) {
+          const session = JSON.parse(saved);
+          if (session.projectTheme === project.theme) {
+            setMessages(session.messages?.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) || []);
+            setCurrentStage(session.currentStage || "deepening");
+            setCompletedStages(session.completedStages || []);
+            setCurrentScriptId(session.currentScriptId || null);
+            conversationRef.current = session.conversationHistory || [];
+            questionsAskedRef.current = session.questionsAsked || [];
+            setInitialized(true);
+            return;
+          }
         }
-      }
-    } catch {}
+      } catch {}
+    }
+
+    // Fresh start with onboarding answers
+    conversationRef.current = [];
+    questionsAskedRef.current = [];
+    setMessages([]);
+    setCurrentStage("deepening");
+    setCompletedStages([]);
+    setCurrentScriptId(null);
+    localStorage.removeItem(SESSION_KEY);
+
+    if (onboardingAnswers) {
+      generateFirstQuestion(onboardingAnswers);
+    }
+
+    setInitialized(true);
   }, []);
+
+  const generateFirstQuestion = async (answers: OnboardingAnswers) => {
+    setIsLoading(true);
+    const summary = `Tema: ${answers.theme}\nGênero: ${answers.genre}\nProtagonista: ${answers.protagonist}\nConflito principal: ${answers.conflict}\nTom: ${answers.tone}`;
+
+    try {
+      const response = await callAI(
+        `O usuário configurou um novo projeto de roteiro com as seguintes informações:\n${summary}\n\nCom base nessas informações, faça UMA pergunta estratégica e específica para aprofundar a visão do usuário. Explore um aspecto que não foi coberto pelas informações iniciais — como motivação do protagonista, antagonista, arco de transformação, mundo da história ou referências cinematográficas.`,
+        "deepening",
+        summary
+      );
+
+      setMessages([{
+        id: "welcome",
+        role: "assistant",
+        content: response,
+        timestamp: new Date(),
+      }]);
+    } catch (err: any) {
+      toast.error("Erro ao conectar com a IA: " + (err.message || "Tente novamente"));
+      setMessages([{
+        id: "welcome",
+        role: "assistant",
+        content: `Recebi suas informações sobre "${answers.theme}". Vamos aprofundar: o que motivou você a contar essa história? Qual o evento transformador na vida do protagonista?`,
+        timestamp: new Date(),
+      }]);
+    }
+    setIsLoading(false);
+  };
 
   // Save session on every change
   useEffect(() => {
+    if (!initialized || messages.length === 0) return;
     try {
       const session = {
         projectTheme: project.theme,
         messages: messages.map((m) => ({ ...m, timestamp: m.timestamp.toISOString() })),
         currentStage,
         completedStages,
-        questionAnswers,
         currentScriptId,
         conversationHistory: conversationRef.current,
         questionsAsked: questionsAskedRef.current,
       };
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     } catch {}
-  }, [messages, currentStage, completedStages, questionAnswers, currentScriptId]);
+  }, [messages, currentStage, completedStages, currentScriptId, initialized]);
 
-  // Auto-save to Supabase when messages change
+  // Auto-save to Supabase
   const saveToSupabase = useCallback(async (msgs: ChatMessage[]) => {
     if (!user || msgs.length === 0) return;
 
@@ -120,18 +168,15 @@ const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProp
       current_stage: currentStage === "deepening" ? "logline" : currentStage,
       status: "in_progress",
       pipeline_outputs: { messages: msgs.map(m => ({ ...m, timestamp: m.timestamp.toISOString() })) },
-      question_answers: questionAnswers,
     };
 
     try {
       if (currentScriptId) {
-        // Update existing
         await supabase
           .from("scripts")
           .update({ ...scriptData, updated_at: now.toISOString() })
           .eq("id", currentScriptId);
       } else {
-        // Create new
         const { data } = await supabase
           .from("scripts")
           .insert({ ...scriptData, title: defaultTitle })
@@ -142,9 +187,8 @@ const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProp
     } catch (err) {
       console.error("Auto-save error:", err);
     }
-  }, [user, project, currentStage, questionAnswers, currentScriptId]);
+  }, [user, project, currentStage, currentScriptId]);
 
-  // Trigger auto-save when messages change
   useEffect(() => {
     if (messages.length > 0) {
       const timer = setTimeout(() => saveToSupabase(messages), 1000);
@@ -189,7 +233,6 @@ const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProp
     const result = data?.result || "Desculpe, não consegui gerar uma resposta. Tente novamente.";
     conversationRef.current.push({ role: "assistant", content: result });
     
-    // Track questions asked by AI
     const questionMatch = result.match(/\?[^?]*$/);
     if (questionMatch) {
       questionsAskedRef.current.push(result.substring(0, 100));
@@ -198,48 +241,9 @@ const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProp
     return result;
   };
 
-  const handleQuestionsSubmit = useCallback(
-    async (answers: Record<string, string | string[]>) => {
-      setQuestionAnswers(answers);
-      setShowQuestions(false);
-
-      const summary = Object.entries(answers)
-        .map(([key, val]) => `${key}: ${Array.isArray(val) ? val.join(", ") : val}`)
-        .join("\n");
-
-      setIsLoading(true);
-      try {
-        const response = await callAI(
-          `O usuário respondeu as perguntas de aprofundamento narrativo. Aqui estão as respostas:\n${summary}\n\nCom base nessas respostas, faça UMA pergunta estratégica para aprofundar ainda mais a visão do usuário sobre a história. Algo que ainda não foi coberto pelas perguntas iniciais. Explore um aspecto completamente diferente.`,
-          "deepening",
-          summary
-        );
-
-        setMessages([{
-          id: "welcome",
-          role: "assistant",
-          content: response,
-          timestamp: new Date(),
-        }]);
-      } catch (err: any) {
-        toast.error("Erro ao conectar com a IA: " + (err.message || "Tente novamente"));
-        setMessages([{
-          id: "welcome",
-          role: "assistant",
-          content: `Recebi suas respostas sobre "${project.theme}". Vamos aprofundar: o que motivou você a contar essa história?`,
-          timestamp: new Date(),
-        }]);
-      }
-      setIsLoading(false);
-    },
-    [project]
-  );
-
-  const contextSummary = questionAnswers
-    ? Object.entries(questionAnswers)
-        .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
-        .join("\n")
-    : "";
+  const contextSummary = onboardingAnswers
+    ? `Tema: ${onboardingAnswers.theme}\nGênero: ${onboardingAnswers.genre}\nProtagonista: ${onboardingAnswers.protagonist}\nConflito: ${onboardingAnswers.conflict}\nTom: ${onboardingAnswers.tone}`
+    : project.notes || "";
 
   const handleSendMessage = useCallback(
     async (content: string) => {
@@ -281,10 +285,8 @@ const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProp
 
   return (
     <div className="flex h-[100dvh] bg-background overflow-hidden">
-      {/* Desktop sidebar */}
       <PipelineSidebar currentStage={displayStage} completedStages={completedStages} />
 
-      {/* Script Library Sidebar (hamburger menu) */}
       <ScriptLibrarySidebar
         open={scriptLibraryOpen}
         onClose={() => setScriptLibraryOpen(false)}
@@ -292,7 +294,6 @@ const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProp
         onLoadScript={onLoadScript}
       />
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <WorkspaceHeader
           project={project}
@@ -316,14 +317,6 @@ const Workspace = ({ project, onBack, onNewScript, onLoadScript }: WorkspaceProp
           completedStages={completedStages}
         />
       </div>
-
-      <QuestionModal
-        open={showQuestions}
-        questions={DEEPENING_QUESTIONS}
-        onSubmit={handleQuestionsSubmit}
-        title="Aprofundamento Narrativo"
-        subtitle="Suas respostas guiarão as IAs na criação do roteiro"
-      />
 
       <PipelineModal
         open={pipelineModalOpen}
