@@ -138,8 +138,9 @@ const Workspace = ({ project, onboardingAnswers, questionAnswers, onBack, onNewS
   const loadSavedScript = async (scriptId: string) => {
     try {
       const { data } = await supabase.from("scripts").select("*").eq("id", scriptId).single();
-      if (data && data.pipeline_outputs?.messages) {
-        const savedMessages = data.pipeline_outputs.messages.map((m: any) => ({
+      const outputs = data?.pipeline_outputs as any;
+      if (data && outputs?.messages) {
+        const savedMessages = outputs.messages.map((m: any) => ({
           ...m,
           timestamp: new Date(m.timestamp),
         }));
