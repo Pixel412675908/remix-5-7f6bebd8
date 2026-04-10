@@ -4,12 +4,11 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
-import ThemeToggle from "@/components/ThemeToggle";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState(() => localStorage.getItem("cinescript-saved-username") || "");
+  const [password, setPassword] = useState(() => localStorage.getItem("cinescript-saved-password") || "");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -47,6 +46,8 @@ const Auth = () => {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        localStorage.setItem("cinescript-saved-username", username.trim());
+        localStorage.setItem("cinescript-saved-password", password);
         toast.success("Login realizado!");
       } else {
         const { error } = await supabase.auth.signUp({
@@ -55,6 +56,8 @@ const Auth = () => {
           options: { data: { username: username.trim() } },
         });
         if (error) throw error;
+        localStorage.setItem("cinescript-saved-username", username.trim());
+        localStorage.setItem("cinescript-saved-password", password);
         toast.success("Conta criada com sucesso!");
       }
     } catch (err: any) {
@@ -66,7 +69,6 @@ const Auth = () => {
 
   return (
     <div className="min-h-[100dvh] bg-background flex items-center justify-center p-5">
-      <ThemeToggle position="fixed-bottom-right" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

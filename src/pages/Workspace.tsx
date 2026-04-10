@@ -66,12 +66,14 @@ const Workspace = ({ project, onboardingAnswers, questionAnswers, onBack, onNewS
   const conversationRef = useRef<Array<{ role: string; content: string }>>([]);
   const questionsAskedRef = useRef<string[]>([]);
 
+  const isImproveMode = project.notes?.startsWith("[MELHORAR ROTEIRO EXISTENTE]") ?? false;
+
   // On mount: either restore session or start fresh with onboarding answers
   useEffect(() => {
     if (initialized) return;
 
-    // Try to restore session only if no new onboarding answers
-    if (!onboardingAnswers) {
+    // Try to restore session only if no new onboarding answers and not improve mode
+    if (!onboardingAnswers && !isImproveMode) {
       try {
         const saved = localStorage.getItem(SESSION_KEY);
         if (saved) {
@@ -90,7 +92,7 @@ const Workspace = ({ project, onboardingAnswers, questionAnswers, onBack, onNewS
       } catch {}
     }
 
-    // Fresh start with onboarding answers
+    // Fresh start
     conversationRef.current = [];
     questionsAskedRef.current = [];
     setMessages([]);
@@ -99,12 +101,44 @@ const Workspace = ({ project, onboardingAnswers, questionAnswers, onBack, onNewS
     setCurrentScriptId(null);
     localStorage.removeItem(SESSION_KEY);
 
-    if (onboardingAnswers) {
+    if (isImproveMode) {
+      generateImproveAnalysis();
+    } else if (onboardingAnswers) {
       generateFirstQuestion(onboardingAnswers);
     }
 
     setInitialized(true);
   }, []);
+
+  const generateImproveAnalysis = async () => {
+    setIsLoading(true);
+    const scriptContent = project.notes?.replace("[MELHORAR ROTEIRO EXISTENTE]\n", "") || "";
+    const summary = `Tema: ${project.theme}\nGênero: ${project.genre || "Não definido"}\nDuração: ${project.minDuration}-${project.maxDuration} min\nRoteiro/Observações:\n${scriptContent}`;
+
+    try {
+      const response = await callAI(
+        `O usuário enviou um roteiro existente para análise e melhoria profissional. Aqui estão os dados:\n${summary}\n\nAnalise o roteiro fornecido como um roteirista profissional de cinema. Identifique pontos fortes e fracos. Inicie a conversa apresentando uma análise inicial concisa e fazendo UMA pergunta específica sobre qual aspecto o usuário gostaria de melhorar primeiro: estrutura narrativa, desenvolvimento de personagens, diálogos, ritmo, coerência ou outro aspecto.`,
+        "deepening",
+        summary
+      );
+
+      setMessages([{
+        id: "improve-welcome",
+        role: "assistant",
+        content: response,
+        timestamp: new Date(),
+      }]);
+    } catch (err: any) {
+      toast.error("Erro ao conectar com a IA: " + (err.message || "Tente novamente"));
+      setMessages([{
+        id: "improve-welcome",
+        role: "assistant",
+        content: `Recebi seu roteiro sobre "${project.theme}". Vou analisá-lo profissionalmente. Para começar, qual aspecto você gostaria de melhorar primeiro: estrutura narrativa, personagens, diálogos ou ritmo?`,
+        timestamp: new Date(),
+      }]);
+    }
+    setIsLoading(false);
+  };
 
   const generateFirstQuestion = async (answers: OnboardingAnswers) => {
     setIsLoading(true);
