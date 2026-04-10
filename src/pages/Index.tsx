@@ -1,13 +1,14 @@
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Settings } from "lucide-react";
+import { Settings, FolderOpen } from "lucide-react";
 import ProjectSetupModal from "@/components/ProjectSetupModal";
 import OnboardingModal from "@/components/OnboardingModal";
 import type { OnboardingAnswers } from "@/components/OnboardingModal";
 import QuestionModal from "@/components/QuestionModal";
 import { DEEPENING_QUESTIONS } from "@/lib/questions";
 import SettingsModal from "@/components/SettingsModal";
+import ScriptLibrarySidebar from "@/components/ScriptLibrarySidebar";
 import Workspace from "@/pages/Workspace";
 import ThemeToggle from "@/components/ThemeToggle";
 import type { ProjectData } from "@/lib/pipeline";
@@ -36,6 +37,7 @@ const Index = () => {
   const [showQuestions, setShowQuestions] = useState(false);
   const [showImprove, setShowImprove] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
 
   const handleNewScript = useCallback(() => {
     localStorage.removeItem("cinescript-session");
@@ -48,7 +50,6 @@ const Index = () => {
   const handleOnboardingSubmit = useCallback((answers: OnboardingAnswers) => {
     setShowOnboarding(false);
     setOnboardingAnswers(answers);
-    // Show deepening questions before opening workspace
     setShowQuestions(true);
   }, []);
 
@@ -66,6 +67,19 @@ const Index = () => {
     }
   }, [onboardingAnswers]);
 
+  const handleLoadScript = useCallback((s: any) => {
+    localStorage.removeItem("cinescript-session");
+    setOnboardingAnswers(null);
+    setQuestionAnswers(null);
+    setProject({
+      theme: s.theme,
+      genre: s.genre || "",
+      notes: s.notes || "",
+      minDuration: s.min_duration,
+      maxDuration: s.max_duration,
+    });
+  }, []);
+
   if (project) {
     return (
       <Workspace
@@ -74,27 +88,19 @@ const Index = () => {
         questionAnswers={questionAnswers}
         onBack={() => { setProject(null); setOnboardingAnswers(null); setQuestionAnswers(null); }}
         onNewScript={handleNewScript}
-        onLoadScript={(s) => {
-          localStorage.removeItem("cinescript-session");
-          setOnboardingAnswers(null);
-          setQuestionAnswers(null);
-          setProject({
-            theme: s.theme,
-            genre: s.genre || "",
-            notes: s.notes || "",
-            minDuration: s.min_duration,
-            maxDuration: s.max_duration,
-          });
-        }}
+        onLoadScript={handleLoadScript}
       />
     );
   }
 
   return (
     <div className="min-h-[100dvh] bg-background overflow-hidden">
-      {/* Top bar */}
+      {/* Top bar — 3 icons: theme + folder + settings */}
       <div className="fixed top-0 right-0 z-30 flex items-center gap-1 p-4">
         <ThemeToggle position="inline" />
+        <button onClick={() => setShowLibrary(true)} className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200">
+          <FolderOpen strokeWidth={1.5} className="w-[18px] h-[18px]" />
+        </button>
         <button onClick={() => setShowSettings(true)} className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200">
           <Settings strokeWidth={1.5} className="w-[18px] h-[18px]" />
         </button>
@@ -213,7 +219,14 @@ const Index = () => {
         isImproveMode
         onBack={() => setShowImprove(false)}
       />
-      
+
+      <ScriptLibrarySidebar
+        open={showLibrary}
+        onClose={() => setShowLibrary(false)}
+        onNewScript={handleNewScript}
+        onLoadScript={handleLoadScript}
+      />
+
       <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
     </div>
   );

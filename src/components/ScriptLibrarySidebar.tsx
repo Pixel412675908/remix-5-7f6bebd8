@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, MoreHorizontal, PenLine, Pin, Trash2, LogOut, FileText } from "lucide-react";
+import { Plus, MoreHorizontal, PenLine, Pin, Trash2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -31,7 +31,7 @@ interface ScriptLibrarySidebarProps {
 }
 
 const ScriptLibrarySidebar = ({ open, onClose, onNewScript, onLoadScript, activeScripts }: ScriptLibrarySidebarProps) => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [scripts, setScripts] = useState<SavedScript[]>([]);
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -111,7 +111,6 @@ const ScriptLibrarySidebar = ({ open, onClose, onNewScript, onLoadScript, active
     return Math.round(((idx + 1) / stages.length) * 100);
   };
 
-  // Sort: pinned first, then by date
   const sortedScripts = [...scripts].sort((a, b) => {
     const aPinned = pinnedIds.has(a.id) ? 1 : 0;
     const bPinned = pinnedIds.has(b.id) ? 1 : 0;
@@ -169,6 +168,11 @@ const ScriptLibrarySidebar = ({ open, onClose, onNewScript, onLoadScript, active
                             {s.genre}
                           </span>
                         )}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                          s.status === "completed" ? "text-green-500 bg-green-500/10" : "text-orange-500 bg-orange-500/10"
+                        }`}>
+                          {s.status === "completed" ? "Finalizado" : "Em andamento"}
+                        </span>
                         <span className="text-[10px] text-muted-foreground ml-auto">
                           {progressForStage(s.current_stage)}%
                         </span>
@@ -178,7 +182,6 @@ const ScriptLibrarySidebar = ({ open, onClose, onNewScript, onLoadScript, active
                   )}
                 </button>
 
-                {/* 3-dot menu */}
                 <div className="absolute right-2 top-3">
                   <button
                     onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === s.id ? null : s.id); }}
@@ -215,20 +218,13 @@ const ScriptLibrarySidebar = ({ open, onClose, onNewScript, onLoadScript, active
         </div>
 
         {/* Floating + button */}
-        <div className="p-3 border-t border-border space-y-1">
+        <div className="p-3 border-t border-border">
           <button
             onClick={() => { onNewScript(); onClose(); }}
             className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-sm font-medium text-primary-foreground bg-primary hover:opacity-90 transition-all duration-200"
           >
             <Plus strokeWidth={1.5} className="w-5 h-5" />
             Novo Roteiro
-          </button>
-          <button
-            onClick={signOut}
-            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-destructive hover:bg-destructive/10 transition-all duration-200"
-          >
-            <LogOut strokeWidth={1.5} className="w-4 h-4" />
-            Sair da conta
           </button>
         </div>
       </SheetContent>
