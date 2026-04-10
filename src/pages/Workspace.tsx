@@ -51,6 +51,23 @@ const STAGE_PROVIDERS: Record<string, { provider: string; fallback: string }> = 
 
 const SESSION_KEY = "cinescript-session";
 
+// Calculate progress based on messages exchanged
+const calculateProgress = (msgs: ChatMessage[], stage: PipelineStage, completed: PipelineStage[]): number => {
+  const allStages = PIPELINE_STAGES.map(s => s.id);
+  const stageIdx = allStages.indexOf(stage as any);
+  if (stageIdx < 0) return 0;
+
+  // Base progress from completed stages
+  const baseProgress = (completed.length / allStages.length) * 100;
+
+  // Add partial progress from messages within current stage (up to next stage threshold)
+  const stageWeight = 100 / allStages.length;
+  const userMsgCount = msgs.filter(m => m.role === "user").length;
+  const partialProgress = Math.min(userMsgCount * 2, stageWeight * 0.8); // max 80% of current stage
+
+  return Math.min(Math.round(baseProgress + partialProgress), 100);
+};
+
 const Workspace = ({ project, onboardingAnswers, questionAnswers, onBack, onNewScript, onLoadScript }: WorkspaceProps) => {
   const { user } = useAuth();
   const [currentStage, setCurrentStage] = useState<PipelineStage>("deepening");
@@ -63,14 +80,22 @@ const Workspace = ({ project, onboardingAnswers, questionAnswers, onBack, onNewS
   const [pipelineModalOpen, setPipelineModalOpen] = useState(false);
   const [currentScriptId, setCurrentScriptId] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
+  const [loadedScriptId, setLoadedScriptId] = useState<string | null>(null);
   const conversationRef = useRef<Array<{ role: string; content: string }>>([]);
   const questionsAskedRef = useRef<string[]>([]);
 
   const isImproveMode = project.notes?.startsWith("[MELHORAR ROTEIRO EXISTENTE]") ?? false;
 
-  // On mount: either restore session or start fresh with onboarding answers
+  // On mount: either restore session or start fresh
   useEffect(() => {
     if (initialized) return;
+
+    // If loading a saved script by ID (from library click)
+    if (loadedScriptId) {
+      loadSavedScript(loadedScriptId);
+      setInitialized(true);
+      return;
+    }
 
     // Try to restore session only if no new onboarding answers and not improve mode
     if (!onboardingAnswers && !isImproveMode) {
@@ -109,6 +134,29 @@ const Workspace = ({ project, onboardingAnswers, questionAnswers, onBack, onNewS
 
     setInitialized(true);
   }, []);
+
+  const loadSavedScript = async (scriptId: string) => {
+    try {
+      const { data } = await supabase.from("scripts").select("*").eq("id", scriptId).single();
+      const outputs = data?.pipeline_outputs as any;
+      if (data && outputs?.messages) {
+        const savedMessages = outputs.messages.map((m: any) => ({
+          ...m,
+          timestamp: new Date(m.timestamp),
+        }));
+        setMessages(savedMessages);
+        setCurrentStage(data.current_stage as PipelineStage || "deepening");
+        setCurrentScriptId(data.id);
+        // Rebuild conversation history from messages
+        conversationRef.current = savedMessages.map((m: ChatMessage) => ({
+          role: m.role,
+          content: m.content,
+        }));
+      }
+    } catch (err) {
+      console.error("Error loading script:", err);
+    }
+  };
 
   const generateImproveAnalysis = async () => {
     setIsLoading(true);
@@ -321,8 +369,35 @@ const Workspace = ({ project, onboardingAnswers, questionAnswers, onBack, onNewS
     localStorage.removeItem(SESSION_KEY);
   };
 
+  // Handle loading a script from the library
+  const handleLoadFromLibrary = useCallback((script: any) => {
+    // Load conversation from pipeline_outputs
+    if (script.pipeline_outputs?.messages) {
+      const savedMessages = script.pipeline_outputs.messages.map((m: any) => ({
+        ...m,
+        timestamp: new Date(m.timestamp),
+      }));
+      setMessages(savedMessages);
+      conversationRef.current = savedMessages.map((m: ChatMessage) => ({
+        role: m.role,
+        content: m.content,
+      }));
+    } else {
+      setMessages([]);
+      conversationRef.current = [];
+    }
+    setCurrentStage((script.current_stage as PipelineStage) || "deepening");
+    setCurrentScriptId(script.id);
+    questionsAskedRef.current = [];
+
+    // Also call parent handler to update project data
+    onLoadScript?.(script);
+  }, [onLoadScript]);
+
   const displayStage: PipelineStage =
     currentStage === "deepening" || currentStage === "input" ? "logline" : currentStage;
+
+  const progressPercent = calculateProgress(messages, displayStage, completedStages);
 
   return (
     <div className="flex h-[100dvh] bg-background overflow-hidden">
@@ -332,7 +407,7 @@ const Workspace = ({ project, onboardingAnswers, questionAnswers, onBack, onNewS
         open={scriptLibraryOpen}
         onClose={() => setScriptLibraryOpen(false)}
         onNewScript={() => { onNewScript?.(); }}
-        onLoadScript={onLoadScript}
+        onLoadScript={handleLoadFromLibrary}
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -356,6 +431,7 @@ const Workspace = ({ project, onboardingAnswers, questionAnswers, onBack, onNewS
           onProgressClick={() => setPipelineModalOpen(true)}
           currentStage={displayStage}
           completedStages={completedStages}
+          progressOverride={progressPercent}
         />
       </div>
 

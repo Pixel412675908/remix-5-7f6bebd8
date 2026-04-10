@@ -8,10 +8,11 @@ interface FloatingToolbarProps {
   onProgressClick: () => void;
   currentStage: PipelineStage;
   completedStages: PipelineStage[];
+  progressOverride?: number;
 }
 
-const FloatingToolbar = ({ onSettingsOpen, onArchiveOpen, onProgressClick, currentStage, completedStages }: FloatingToolbarProps) => {
-  const progressPercent = Math.round((completedStages.length / PIPELINE_STAGES.length) * 100);
+const FloatingToolbar = ({ onSettingsOpen, onArchiveOpen, onProgressClick, currentStage, completedStages, progressOverride }: FloatingToolbarProps) => {
+  const progressPercent = progressOverride ?? Math.round((completedStages.length / PIPELINE_STAGES.length) * 100);
 
   return (
     <div className="flex items-center gap-1 justify-end px-4 py-2 border-t border-border bg-background shrink-0">

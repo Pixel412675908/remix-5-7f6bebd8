@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Check, Circle, Square } from "lucide-react";
 
 export interface QuestionOption {
   id: string;
@@ -12,6 +12,7 @@ export interface Question {
   id: string;
   text: string;
   type: "single" | "multiple" | "text";
+  maxSelect?: number;
   options?: QuestionOption[];
 }
 
@@ -34,10 +35,10 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
   const selectedSingle = (answers[question.id] as string) || "";
   const selectedMultiple = (answers[question.id] as string[]) || [];
   const freeText = freeTextInputs[question.id] || "";
+  const maxSelect = question.maxSelect || 3;
 
   const handleSelectSingle = (optionId: string) => {
     setAnswers((prev) => ({ ...prev, [question.id]: optionId }));
-    // Clear free text when selecting an option
     setFreeTextInputs((prev) => ({ ...prev, [question.id]: "" }));
   };
 
@@ -46,7 +47,7 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
       const current = (prev[question.id] as string[]) || [];
       const next = current.includes(optionId)
         ? current.filter((id) => id !== optionId)
-        : [...current, optionId];
+        : current.length < maxSelect ? [...current, optionId] : current;
       return { ...prev, [question.id]: next };
     });
   };
@@ -54,7 +55,6 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
   const handleFreeTextChange = (value: string) => {
     setFreeTextInputs((prev) => ({ ...prev, [question.id]: value }));
     if (value.trim()) {
-      // Clear option selection when typing free text
       setAnswers((prev) => {
         const copy = { ...prev };
         delete copy[question.id];
@@ -72,7 +72,6 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
   };
 
   const handleNext = () => {
-    // If free text is filled, use it as the answer
     const finalAnswers = { ...answers };
     if (freeText.trim()) {
       finalAnswers[question.id] = `[custom] ${freeText.trim()}`;
@@ -87,6 +86,12 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
   };
 
   const progress = ((currentIndex + 1) / questions.length) * 100;
+
+  const typeLabel = question.type === "multiple"
+    ? `Escolha até ${maxSelect} opções`
+    : "Escolha 1 opção";
+
+  const TypeIcon = question.type === "multiple" ? Square : Circle;
 
   return (
     <AnimatePresence>
@@ -136,9 +141,17 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
                   exit={{ opacity: 0, x: -30 }}
                   transition={{ duration: 0.25, ease: "easeOut" }}
                 >
-                  <h3 className="font-display text-lg text-foreground mb-5 leading-snug">
+                  <h3 className="font-display text-lg text-foreground mb-2 leading-snug">
                     {question.text}
                   </h3>
+
+                  {/* Type indicator */}
+                  {(question.type === "single" || question.type === "multiple") && (
+                    <div className="flex items-center gap-1.5 mb-4">
+                      <TypeIcon strokeWidth={1.5} className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-[11px] text-muted-foreground">{typeLabel}</span>
+                    </div>
+                  )}
 
                   {question.type === "text" && (
                     <textarea
@@ -147,7 +160,6 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
                       placeholder="Escreva sua resposta..."
                       rows={3}
                       className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none focus:border-primary/50 transition-all duration-150"
-                      style={{ fontFamily: "var(--font-body)" }}
                     />
                   )}
 
@@ -171,7 +183,6 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
                                   ? "border-primary bg-primary/10 text-primary font-medium"
                                   : "border-border bg-muted/20 text-foreground hover:border-primary/30"
                               }`}
-                              style={{ fontFamily: "var(--font-body)" }}
                             >
                               <div className="flex items-center justify-between">
                                 <span>{opt.label}</span>
@@ -180,9 +191,6 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
                             </button>
                           );
                         })}
-                        {question.type === "multiple" && (
-                          <p className="text-xs text-muted-foreground mt-2">Selecione quantas opções desejar</p>
-                        )}
                       </div>
 
                       {/* Free text fallback */}
@@ -193,7 +201,6 @@ const QuestionModal = ({ open, questions, onSubmit, title, subtitle }: QuestionM
                           placeholder="Caso não encontre a resposta desejada, escreva aqui para continuar"
                           rows={2}
                           className="w-full bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none focus:border-primary/50 transition-all duration-150"
-                          style={{ fontFamily: "var(--font-body)" }}
                         />
                       </div>
                     </>
